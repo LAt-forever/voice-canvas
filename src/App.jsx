@@ -4,7 +4,8 @@ import CommandPanel from './components/CommandPanel';
 import VoiceBar from './components/VoiceBar';
 import { executeCommand, createInitialState } from './services/executor';
 import { createSpeechRecognizer, isSpeechSupported } from './services/speechService';
-import { parseCommand } from './services/commandParser';
+import { parseCommand, needsLLM } from './services/commandParser';
+import { parseWithLLM } from './services/llmParser';
 
 function App() {
   const canvasRef = useRef(null);
@@ -16,6 +17,10 @@ function App() {
     isSpeechSupported() ? 'Ready' : 'Speech recognition not supported'
   );
   const recognizerRef = useRef(null);
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || '';
+  const LLM_API_ENDPOINT = import.meta.env.VITE_LLM_API_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions';
 
   const runCommand = useCallback((command) => {
     setState(prev => {
@@ -65,13 +70,25 @@ function App() {
     }
 
     recognizerRef.current = createSpeechRecognizer({
-      onResult: (text, isFinal) => {
+      onResult: async (text, isFinal) => {
         setTranscript(text);
         if (isFinal) {
           const command = parseCommand(text);
           if (command) {
             command.forEach(runCommand);
             setStatusMessage(`Executed: ${text}`);
+          } else if (needsLLM(text) && LLM_API_KEY) {
+            setIsProcessing(true);
+            setStatusMessage('Thinking...');
+            try {
+              const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT);
+              commands.forEach(runCommand);
+              setStatusMessage(`Executed: ${text}`);
+            } catch (err) {
+              setStatusMessage(`Failed: ${err.message}`);
+            } finally {
+              setIsProcessing(false);
+            }
           } else {
             setStatusMessage(`Unrecognized: ${text}`);
           }
@@ -211,6 +228,8 @@ function App() {
           onRedo={redo}
           canUndo={state.undoStack.length > 0}
           canRedo={state.redoStack.length > 0}
+          onClear={() => runCommand({ action: 'clear' })}
+          onSave={saveCanvas}
         />
       </main>
 
