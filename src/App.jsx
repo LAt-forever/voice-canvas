@@ -1,5 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import CanvasBoard from './components/CanvasBoard';
+import CommandPanel from './components/CommandPanel';
+import VoiceBar from './components/VoiceBar';
 import { executeCommand, createInitialState } from './services/executor';
 import { createSpeechRecognizer, isSpeechSupported } from './services/speechService';
 import { parseCommand } from './services/commandParser';
@@ -105,9 +107,14 @@ function App() {
     setIsListening(prev => !prev);
   }, [isListening]);
 
+  const closeVoiceBar = useCallback(() => {
+    if (isListening) toggleListening();
+  }, [isListening, toggleListening]);
+
+  const lastCommand = state.history.length > 0 ? state.history[state.history.length - 1] : null;
+
   return (
     <div className="app">
-      {/* Top Header */}
       <header className="app-header">
         <div className="header-left">
           <h1>VoiceCanvas</h1>
@@ -131,7 +138,7 @@ function App() {
             <button type="button" className="icon-btn" aria-label="Settings">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.17 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.17 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.17a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06A1.65 1.65 0 0 0 4.17 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.17 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l-.06-.06A1.65 1.65 0 0 0 9 4.17a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
             <button type="button" className="icon-btn avatar-btn" aria-label="User">
@@ -144,9 +151,7 @@ function App() {
         </div>
       </header>
 
-      {/* Main Area */}
       <main className="app-main">
-        {/* Left Sidebar: Tool State Cards */}
         <aside className="sidebar-left">
           <div className="tool-card">
             <span className="tool-label">Size</span>
@@ -178,83 +183,26 @@ function App() {
           </div>
         </aside>
 
-        {/* Center Canvas Area */}
         <section className="canvas-area">
           <CanvasBoard ref={canvasRef} shapes={state.shapes} />
         </section>
 
-        {/* Right Sidebar: Command Logic Panel */}
-        <aside className="sidebar-right">
-          <div className="command-panel-header">
-            <div className="robot-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="10" rx="2" />
-                <circle cx="12" cy="5" r="2" />
-                <path d="M12 7v4" />
-                <line x1="8" y1="16" x2="8" y2="16" />
-                <line x1="16" y1="16" x2="16" y2="16" />
-              </svg>
-            </div>
-            <div className="command-panel-titles">
-              <h2>Command Logic</h2>
-              <p>{statusMessage}</p>
-            </div>
-          </div>
-
-          <div className="command-cards">
-            <div className="command-card">
-              <span className="command-card-label">CURRENT ACTION</span>
-              <span className="command-card-value">{state.history.length > 0 ? state.history[state.history.length - 1].action : '—'}</span>
-            </div>
-            <div className="command-card">
-              <span className="command-card-label">SUBJECT MATTER</span>
-              <span className="command-card-value">{state.history.length > 0 ? (state.history[state.history.length - 1].shape || '—') : '—'}</span>
-            </div>
-            <div className="command-card">
-              <span className="command-card-label">AESTHETIC STYLE</span>
-              <span className="command-card-value">{state.history.length > 0 ? (state.history[state.history.length - 1].color || '—') : '—'}</span>
-            </div>
-          </div>
-
-          <div className="command-actions">
-            <button type="button" className="btn-secondary" onClick={undo} disabled={state.undoStack.length === 0}>Revert Last</button>
-            <button type="button" className="btn-secondary" onClick={redo} disabled={state.redoStack.length === 0}>Redo</button>
-          </div>
-
-          <div className="command-hint">
-            <p>Try saying: "Draw a red circle in the center"</p>
-          </div>
-        </aside>
+        <CommandPanel
+          statusMessage={statusMessage}
+          currentCommand={lastCommand}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={state.undoStack.length > 0}
+          canRedo={state.redoStack.length > 0}
+        />
       </main>
 
-      {/* Bottom Floating Voice Bar */}
-      <div className={`voice-bar ${isListening ? 'listening' : ''}`}>
-        <button type="button" className={`mic-btn ${isListening ? 'active' : ''}`} aria-label="Toggle voice" onClick={toggleListening}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-            <line x1="12" y1="19" x2="12" y2="23" />
-            <line x1="8" y1="23" x2="16" y2="23" />
-          </svg>
-        </button>
-        <div className="voice-info">
-          <span className="voice-label">{isListening ? 'LISTENING...' : 'VOICE ACTIVE'}</span>
-          <span className="voice-transcript">{transcript || 'Say something to start drawing'}</span>
-        </div>
-        <div className="voice-waveform">
-          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
-          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
-          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
-          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
-          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
-        </div>
-        <button type="button" className="close-btn" aria-label="Close voice bar" onClick={() => { if (isListening) toggleListening(); }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
+      <VoiceBar
+        isListening={isListening}
+        transcript={transcript}
+        onToggle={toggleListening}
+        onClose={closeVoiceBar}
+      />
     </div>
   );
 }
