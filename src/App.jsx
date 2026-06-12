@@ -1,4 +1,15 @@
+import { useRef, useState } from 'react';
+import CanvasBoard from './components/CanvasBoard';
+
 function App() {
+  const canvasRef = useRef(null);
+  const [shapes] = useState([
+    { id: '1', type: 'rect', x: 200, y: 150, width: 160, height: 120, color: '#ef4444' },
+    { id: '2', type: 'circle', x: 400, y: 200, width: 120, height: 120, color: '#3b82f6' },
+    { id: '3', type: 'line', x: 300, y: 350, width: 200, height: 100, color: '#22c55e' },
+    { id: '4', type: 'triangle', x: 550, y: 300, width: 120, height: 100, color: '#eab308' }
+  ]);
+
   return (
     <div className="app">
       {/* Top Header */}
@@ -62,9 +73,7 @@ function App() {
 
         {/* Center Canvas Area */}
         <section className="canvas-area">
-          <div className="canvas-board">
-            <canvas />
-          </div>
+          <CanvasBoard ref={canvasRef} shapes={shapes} />
         </section>
 
         {/* Right Sidebar: Command Logic Panel */}
