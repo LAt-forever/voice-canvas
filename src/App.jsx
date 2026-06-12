@@ -1,11 +1,19 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import CanvasBoard from './components/CanvasBoard';
 import { executeCommand, createInitialState } from './services/executor';
+import { createSpeechRecognizer, isSpeechSupported } from './services/speechService';
+import { parseCommand } from './services/commandParser';
 
 function App() {
   const canvasRef = useRef(null);
   const [state, setState] = useState(createInitialState);
   const [canvasSize] = useState({ width: 800, height: 600 });
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [statusMessage, setStatusMessage] = useState(
+    isSpeechSupported() ? 'Ready' : 'Speech recognition not supported'
+  );
+  const recognizerRef = useRef(null);
 
   const runCommand = useCallback((command) => {
     setState(prev => {
@@ -47,6 +55,55 @@ function App() {
       };
     });
   }, []);
+
+  useEffect(() => {
+    if (!isSpeechSupported()) {
+      setStatusMessage('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+      return;
+    }
+
+    recognizerRef.current = createSpeechRecognizer({
+      onResult: (text, isFinal) => {
+        setTranscript(text);
+        if (isFinal) {
+          const command = parseCommand(text);
+          if (command) {
+            command.forEach(runCommand);
+            setStatusMessage(`Executed: ${text}`);
+          } else {
+            setStatusMessage(`Unrecognized: ${text}`);
+          }
+        }
+      },
+      onError: (error) => {
+        setStatusMessage(`Speech error: ${error}`);
+        setIsListening(false);
+      },
+      onEnd: () => {
+        setIsListening(false);
+      }
+    });
+
+    return () => {
+      if (recognizerRef.current) recognizerRef.current.stop();
+    };
+  }, [runCommand]);
+
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      recognizerRef.current?.stop();
+    } else {
+      setTranscript('');
+      setStatusMessage('Listening...');
+      try {
+        recognizerRef.current?.start();
+      } catch (err) {
+        setStatusMessage(`Could not start listening: ${err.message}`);
+        return;
+      }
+    }
+    setIsListening(prev => !prev);
+  }, [isListening]);
 
   return (
     <div className="app">
@@ -140,7 +197,7 @@ function App() {
             </div>
             <div className="command-panel-titles">
               <h2>Command Logic</h2>
-              <p>Listening for instructions...</p>
+              <p>{statusMessage}</p>
             </div>
           </div>
 
@@ -171,8 +228,8 @@ function App() {
       </main>
 
       {/* Bottom Floating Voice Bar */}
-      <div className="voice-bar">
-        <button type="button" className="mic-btn" aria-label="Toggle voice">
+      <div className={`voice-bar ${isListening ? 'listening' : ''}`}>
+        <button type="button" className={`mic-btn ${isListening ? 'active' : ''}`} aria-label="Toggle voice" onClick={toggleListening}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -181,17 +238,17 @@ function App() {
           </svg>
         </button>
         <div className="voice-info">
-          <span className="voice-label">LISTENING...</span>
-          <span className="voice-transcript">Say something to start drawing</span>
+          <span className="voice-label">{isListening ? 'LISTENING...' : 'VOICE ACTIVE'}</span>
+          <span className="voice-transcript">{transcript || 'Say something to start drawing'}</span>
         </div>
         <div className="voice-waveform">
-          <span className="wave-bar" />
-          <span className="wave-bar" />
-          <span className="wave-bar" />
-          <span className="wave-bar" />
-          <span className="wave-bar" />
+          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
+          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
+          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
+          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
+          <span className={`wave-bar ${isListening ? 'animating' : ''}`} />
         </div>
-        <button type="button" className="close-btn" aria-label="Close voice bar">
+        <button type="button" className="close-btn" aria-label="Close voice bar" onClick={() => { if (isListening) toggleListening(); }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
