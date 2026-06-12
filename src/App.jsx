@@ -1,14 +1,52 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import CanvasBoard from './components/CanvasBoard';
+import { executeCommand, createInitialState } from './services/executor';
 
 function App() {
   const canvasRef = useRef(null);
-  const [shapes] = useState([
-    { id: '1', type: 'rect', x: 200, y: 150, width: 160, height: 120, color: '#ef4444' },
-    { id: '2', type: 'circle', x: 400, y: 200, width: 120, height: 120, color: '#3b82f6' },
-    { id: '3', type: 'line', x: 300, y: 350, width: 200, height: 100, color: '#22c55e' },
-    { id: '4', type: 'triangle', x: 550, y: 300, width: 120, height: 100, color: '#eab308' }
-  ]);
+  const [state, setState] = useState(createInitialState);
+  const [canvasSize] = useState({ width: 800, height: 600 });
+
+  const runCommand = useCallback((command) => {
+    setState(prev => {
+      const next = executeCommand(command, prev, canvasSize);
+      return {
+        ...next,
+        undoStack: [...prev.undoStack, prev.shapes],
+        redoStack: [],
+        history: [...(prev.history || []), command],
+        shouldSave: false
+      };
+    });
+  }, [canvasSize]);
+
+  const undo = useCallback(() => {
+    setState(prev => {
+      if (prev.undoStack.length === 0) return prev;
+      const lastShapes = prev.undoStack[prev.undoStack.length - 1];
+      return {
+        ...prev,
+        shapes: lastShapes,
+        undoStack: prev.undoStack.slice(0, -1),
+        redoStack: [...prev.redoStack, prev.shapes],
+        shouldSave: false
+      };
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setState(prev => {
+      if (prev.redoStack.length === 0) return prev;
+      const nextShapes = prev.redoStack[prev.redoStack.length - 1];
+      return {
+        ...prev,
+        shapes: nextShapes,
+        redoStack: prev.redoStack.slice(0, -1),
+        undoStack: [...prev.undoStack, prev.shapes],
+        shouldSave: false
+      };
+    });
+  }, []);
 
   return (
     <div className="app">
@@ -20,7 +58,7 @@ function App() {
         <div className="header-right">
           <span className="session-timer">Session: 00:00:00</span>
           <div className="header-actions">
-            <button type="button" className="icon-btn" aria-label="Undo">
+            <button type="button" className="icon-btn" aria-label="Undo" onClick={undo} disabled={state.undoStack.length === 0}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 7v6h6" />
                 <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
@@ -63,17 +101,29 @@ function App() {
           </div>
           <div className="tool-card">
             <span className="tool-label">Active Color</span>
-            <div className="color-swatch" style={{ backgroundColor: '#FF7E67' }} />
+            <div className="color-swatch" style={{ backgroundColor: state.currentColor }} />
           </div>
           <div className="tool-card">
             <span className="tool-label">Layer</span>
             <span className="tool-value">Base_02</span>
           </div>
+
+          <div className="debug-actions">
+            <button type="button" onClick={() => runCommand({ action: 'draw', shape: 'rect', color: 'red', position: 'center', size: 'medium' })} className="btn-debug">
+              Draw Red Rect
+            </button>
+            <button type="button" onClick={() => runCommand({ action: 'draw', shape: 'circle', color: 'blue', position: 'center', size: 'medium' })} className="btn-debug">
+              Draw Blue Circle
+            </button>
+            <button type="button" onClick={() => runCommand({ action: 'draw', shape: 'line', color: 'green', position: 'center', size: 'medium' })} className="btn-debug">
+              Draw Green Line
+            </button>
+          </div>
         </aside>
 
         {/* Center Canvas Area */}
         <section className="canvas-area">
-          <CanvasBoard ref={canvasRef} shapes={shapes} />
+          <CanvasBoard ref={canvasRef} shapes={state.shapes} />
         </section>
 
         {/* Right Sidebar: Command Logic Panel */}
@@ -97,21 +147,21 @@ function App() {
           <div className="command-cards">
             <div className="command-card">
               <span className="command-card-label">CURRENT ACTION</span>
-              <span className="command-card-value">—</span>
+              <span className="command-card-value">{state.history.length > 0 ? state.history[state.history.length - 1].action : '—'}</span>
             </div>
             <div className="command-card">
               <span className="command-card-label">SUBJECT MATTER</span>
-              <span className="command-card-value">—</span>
+              <span className="command-card-value">{state.history.length > 0 ? (state.history[state.history.length - 1].shape || '—') : '—'}</span>
             </div>
             <div className="command-card">
               <span className="command-card-label">AESTHETIC STYLE</span>
-              <span className="command-card-value">—</span>
+              <span className="command-card-value">{state.history.length > 0 ? (state.history[state.history.length - 1].color || '—') : '—'}</span>
             </div>
           </div>
 
           <div className="command-actions">
-            <button type="button" className="btn-secondary">Revert Last</button>
-            <button type="button" className="btn-secondary">Advanced Parameters</button>
+            <button type="button" className="btn-secondary" onClick={undo} disabled={state.undoStack.length === 0}>Revert Last</button>
+            <button type="button" className="btn-secondary" onClick={redo} disabled={state.redoStack.length === 0}>Redo</button>
           </div>
 
           <div className="command-hint">

@@ -140,6 +140,29 @@ body {
   box-shadow: 0 0 0 1px #e2e8f0;
 }
 
+.debug-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-debug {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #4f46e5;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btn-debug:hover {
+  background-color: #eef2ff;
+}
+
 /* Center Canvas Area */
 .canvas-area {
   flex: 1;
