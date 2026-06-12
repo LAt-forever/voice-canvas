@@ -2093,6 +2093,20 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
+## UI Design Note (Updated from Stitch)
+
+The final main canvas UI follows the user's Stitch design (light theme):
+
+- **Top header**: `AetherDraw AI` title in indigo/blue, session timer on the right, action icons (undo, layers, settings, avatar).
+- **Left sidebar**: Floating tool-state cards for Size, Opacity, Active Color, and Layer.
+- **Right sidebar**: `Command Logic` panel showing listening status, current action/subject/style, "Revert Last" button, and hint text.
+- **Bottom center**: Rounded floating voice bar with microphone icon, "Listening..." label, transcript text, audio waveform, and close button.
+- **Center canvas**: Light grid background (#f8fafc) with subtle dots, drawing area in the middle.
+
+Implementation tasks below use this layout. Components `VoicePanel` and `CommandHistory` are merged into a right-sidebar `CommandPanel`; the bottom floating bar becomes a separate `VoiceBar` component.
+
+---
+
 ## Execution Handoff
 
 **Plan complete and saved to `docs/superpowers/plans/2026-06-12-voicecanvas-implementation.md`.**
