@@ -1,4 +1,4 @@
-function CommandPanel({ statusMessage, currentCommand, onUndo, onRedo, canUndo, canRedo }) {
+function CommandPanel({ statusMessage, currentCommand, onUndo, onRedo, canUndo, canRedo, onClear, onSave }) {
   return (
     <aside className="sidebar-right">
       <div className="command-panel-header">
@@ -35,6 +35,8 @@ function CommandPanel({ statusMessage, currentCommand, onUndo, onRedo, canUndo, 
       <div className="command-actions">
         <button type="button" className="btn-secondary" onClick={onUndo} disabled={!canUndo}>Revert Last</button>
         <button type="button" className="btn-secondary" onClick={onRedo} disabled={!canRedo}>Redo</button>
+        <button type="button" className="btn-secondary" onClick={onClear}>Clear Canvas</button>
+        <button type="button" className="btn-secondary" onClick={onSave}>Save Image</button>
       </div>
 
       <div className="command-hint">

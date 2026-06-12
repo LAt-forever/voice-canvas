@@ -111,6 +111,23 @@ function App() {
     if (isListening) toggleListening();
   }, [isListening, toggleListening]);
 
+  const saveCanvas = useCallback(() => {
+    runCommand({ action: 'save' });
+  }, [runCommand]);
+
+  useEffect(() => {
+    if (state.shouldSave && canvasRef.current) {
+      const dataUrl = canvasRef.current.exportImage();
+      if (dataUrl) {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `voice-canvas-${Date.now()}.png`;
+        link.click();
+      }
+      setState(prev => ({ ...prev, shouldSave: false }));
+    }
+  }, [state.shouldSave]);
+
   const lastCommand = state.history.length > 0 ? state.history[state.history.length - 1] : null;
 
   return (

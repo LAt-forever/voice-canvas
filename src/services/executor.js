@@ -30,6 +30,9 @@ export function executeCommand(command, state, canvasSize) {
     case 'clear': {
       return { shapes: [], currentColor };
     }
+    case 'save': {
+      return { shapes, currentColor, shouldSave: true };
+    }
     default:
       return { shapes, currentColor };
   }
