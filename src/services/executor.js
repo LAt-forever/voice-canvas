@@ -28,14 +28,13 @@ export function executeCommand(command, state, canvasSize) {
     case 'delete': {
       const targets = findMatchingShapes(shapes, command.filters, canvasSize);
       if (targets.length === 0) {
-        return { shapes, currentColor, removed: [], shouldSave: false };
+        return { shapes, currentColor, removed: [] };
       }
       const targetIds = new Set(targets.map(t => t.id));
       return {
         shapes: shapes.filter(s => !targetIds.has(s.id)),
         currentColor,
-        removed: targets,
-        shouldSave: false
+        removed: targets
       };
     }
     case 'setColor': {

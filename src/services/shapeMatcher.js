@@ -20,6 +20,7 @@ function shapeMatchesBaseFilters(shape, filters) {
     if (!preset) return true;
     const targetArea = preset.width * preset.height;
     const area = shape.width * shape.height;
+    if (area === 0 || targetArea === 0) return false;
     const ratio = Math.max(area, targetArea) / Math.max(Math.min(area, targetArea), 1);
     if (ratio > 2) return false;
   }

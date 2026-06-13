@@ -37,13 +37,12 @@ function App() {
 
   const runCommand = useCallback((command) => {
     setState(prev => {
-      const next = executeCommand(command, prev, canvasSize);
-      feedbackRef.current = getCommandFeedback(command, next);
+      const { removed, ...next } = executeCommand(command, prev, canvasSize);
+      feedbackRef.current = getCommandFeedback(command, { ...next, removed });
       return {
-        shapes: next.shapes,
-        currentColor: next.currentColor,
+        ...next,
+        lastRemoved: removed || [],
         shouldSave: next.shouldSave || false,
-        lastRemoved: next.removed || [],
         undoStack: [...prev.undoStack, prev.shapes],
         redoStack: [],
         history: [...(prev.history || []), command]
