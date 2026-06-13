@@ -155,15 +155,16 @@ case 'setGridSize': {
 
 ### 5.2 Draw 命令吸附
 
-当 `command.action === 'draw'` 且 `state.grid.snap === true` 时：
+`executeCommand` 的 `draw` 分支在生成 shape 前应用吸附：
 
-1. 先调用 `resolvePosition(command.position, canvasWidth, canvasHeight)` 得到原始坐标 `(x, y)`。
-2. 再调用 `snapPosition(x, y, state.grid.spacing)` 得到吸附后的坐标。
-3. 使用吸附后的坐标生成 shape。
+1. 调用 `resolvePosition(command.position, canvasWidth, canvasHeight)` 得到原始坐标 `(x, y)`。
+2. 若 `state.grid.snap === true`，调用 `snapPosition(x, y, state.grid.spacing)` 得到吸附后的坐标；否则保持原坐标。
 
 吸附规则：
 - 计算最近网格交点 `(round(x / spacing) * spacing, round(y / spacing) * spacing)`。
 - 若原始坐标与交点距离小于 `spacing / 2`，则吸附到交点；否则保持原坐标。
+
+3. 使用最终坐标生成 shape。
 
 ---
 
@@ -171,19 +172,31 @@ case 'setGridSize': {
 
 ### 6.1 网格绘制
 
-`CanvasBoard` 接收 `grid` prop。在 `useEffect` 中：
+`CanvasBoard` 接收 `grid` prop，并渲染两个叠放的 `<canvas>`：
 
-1. 清空画布。
-2. 若 `grid.visible` 为 true，绘制淡色线状网格。
-   - 使用 `ctx.strokeStyle = '#e2e8f0'`（与现有背景点阵同色系）。
-   - 使用 `ctx.lineWidth = 1`。
-   - 从 `x = 0` 到 `canvasWidth`，每隔 `grid.spacing` 画竖线。
-   - 从 `y = 0` 到 `canvasHeight`，每隔 `grid.spacing` 画横线。
-3. 遍历 `shapes` 绘制图形。
+- **gridCanvas**：位于底层（`z-index: 0`），仅绘制网格线，不参与导出。
+- **shapeCanvas**：位于上层（`z-index: 1`），背景透明，绘制所有 `shapes`，导出图片时只取该 canvas。
+
+绘制流程：
+
+1. 在 `shapeCanvas` 上清空并绘制所有 `shapes`（与现有逻辑一致）。
+2. 在 `gridCanvas` 上：
+   - 先清空。
+   - 若 `grid.visible` 为 true，绘制淡色线状网格。
+     - 使用 `ctx.strokeStyle = '#e2e8f0'`（与现有背景点阵同色系）。
+     - 使用 `ctx.lineWidth = 1`。
+     - 从 `x = 0` 到 `canvasWidth`，每隔 `grid.spacing` 画竖线。
+     - 从 `y = 0` 到 `canvasHeight`，每隔 `grid.spacing` 画横线。
+
+这样设计的优点是网格仅为视觉辅助线，导出 PNG 时不包含网格，也便于后续叠加背景层。
 
 ### 6.2 高清屏适配
 
 网格绘制在 `ctx.scale(dpr, dpr)` 之后进行，因此坐标使用 CSS 像素即可。
+
+### 6.3 导出图片
+
+`exportImage()` 仅导出上层的 `shapeCanvas`，因此导出的 PNG 不包含网格线。若未来添加背景层，背景层也应单独渲染且不参与导出。
 
 ---
 
