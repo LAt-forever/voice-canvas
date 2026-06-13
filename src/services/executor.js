@@ -1,5 +1,5 @@
 import { resolveColor } from '../utils/colorMap';
-import { resolvePosition } from '../utils/positionResolver';
+import { resolvePosition, snapPosition } from '../utils/positionResolver';
 import { resolveSize } from '../utils/sizeResolver';
 import { findMatchingShapes } from './shapeMatcher';
 
@@ -7,12 +7,21 @@ function generateId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
+const GRID_SIZE_PRESETS = {
+  small: 20,
+  medium: 40,
+  large: 80
+};
+
 export function executeCommand(command, state, canvasSize) {
   const { shapes, currentColor } = state;
 
   switch (command.action) {
     case 'draw': {
-      const position = resolvePosition(command.position, canvasSize.width, canvasSize.height);
+      let position = resolvePosition(command.position, canvasSize.width, canvasSize.height);
+      if (state.grid?.snap) {
+        position = snapPosition(position.x, position.y, state.grid.spacing);
+      }
       const size = resolveSize(command.size);
       const newShape = {
         id: generateId(),
@@ -23,7 +32,7 @@ export function executeCommand(command, state, canvasSize) {
         height: size.height,
         color: resolveColor(command.color || currentColor)
       };
-      return { shapes: [...shapes, newShape], currentColor: newShape.color };
+      return { shapes: [...shapes, newShape], currentColor: newShape.color, grid: state.grid };
     }
     case 'delete': {
       const targets = findMatchingShapes(shapes, command.filters, canvasSize);
@@ -38,16 +47,26 @@ export function executeCommand(command, state, canvasSize) {
       };
     }
     case 'setColor': {
-      return { shapes, currentColor: resolveColor(command.color) };
+      return { shapes, currentColor: resolveColor(command.color), grid: state.grid };
     }
     case 'clear': {
-      return { shapes: [], currentColor };
+      return { shapes: [], currentColor, grid: state.grid };
     }
     case 'save': {
-      return { shapes, currentColor, shouldSave: true };
+      return { shapes, currentColor, grid: state.grid, shouldSave: true };
+    }
+    case 'setGrid': {
+      return { ...state, grid: { ...state.grid, visible: command.visible } };
+    }
+    case 'setSnap': {
+      return { ...state, grid: { ...state.grid, snap: command.snap } };
+    }
+    case 'setGridSize': {
+      const spacing = GRID_SIZE_PRESETS[command.size] || state.grid.spacing;
+      return { ...state, grid: { ...state.grid, spacing } };
     }
     default:
-      return { shapes, currentColor };
+      return { shapes, currentColor, grid: state.grid };
   }
 }
 
@@ -58,6 +77,7 @@ export function createInitialState() {
     undoStack: [],
     redoStack: [],
     history: [],
-    shouldSave: false
+    shouldSave: false,
+    grid: { visible: true, snap: true, spacing: 40 }
   };
 }
