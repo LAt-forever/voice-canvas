@@ -29,16 +29,16 @@ function App() {
     isSpeechSupported() ? 'Ready' : 'Speech recognition not supported'
   );
   const recognizerRef = useRef(null);
+  const feedbackRef = useRef(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || '';
   const LLM_API_ENDPOINT = import.meta.env.VITE_LLM_API_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions';
 
   const runCommand = useCallback((command) => {
-    let feedback = null;
     setState(prev => {
       const next = executeCommand(command, prev, canvasSize);
-      feedback = getCommandFeedback(command, next);
+      feedbackRef.current = getCommandFeedback(command, next);
       return {
         shapes: next.shapes,
         currentColor: next.currentColor,
@@ -49,7 +49,10 @@ function App() {
         history: [...(prev.history || []), command]
       };
     });
-    if (feedback) setStatusMessage(feedback);
+    if (feedbackRef.current) {
+      setStatusMessage(feedbackRef.current);
+      feedbackRef.current = null;
+    }
   }, [canvasSize]);
 
   const undo = useCallback(() => {
@@ -61,7 +64,8 @@ function App() {
         shapes: lastShapes,
         undoStack: prev.undoStack.slice(0, -1),
         redoStack: [...prev.redoStack, prev.shapes],
-        shouldSave: false
+        shouldSave: false,
+        lastRemoved: []
       };
     });
   }, []);
@@ -75,7 +79,8 @@ function App() {
         shapes: nextShapes,
         redoStack: prev.redoStack.slice(0, -1),
         undoStack: [...prev.undoStack, prev.shapes],
-        shouldSave: false
+        shouldSave: false,
+        lastRemoved: []
       };
     });
   }, []);
