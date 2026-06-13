@@ -7,9 +7,21 @@ import { createSpeechRecognizer, isSpeechSupported } from './services/speechServ
 import { parseCommand, needsLLM } from './services/commandParser';
 import { parseWithLLM } from './services/llmParser';
 
+function getCommandFeedback(command, result) {
+  if (command.action === 'delete') {
+    const count = result.removed?.length || 0;
+    if (count === 0) return 'No matching shape found';
+    return `Deleted ${count} shape${count > 1 ? 's' : ''}`;
+  }
+  return null;
+}
+
 function App() {
   const canvasRef = useRef(null);
-  const [state, setState] = useState(createInitialState);
+  const [state, setState] = useState(() => ({
+    ...createInitialState(),
+    lastRemoved: []
+  }));
   const [canvasSize] = useState({ width: 800, height: 600 });
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -17,6 +29,7 @@ function App() {
     isSpeechSupported() ? 'Ready' : 'Speech recognition not supported'
   );
   const recognizerRef = useRef(null);
+  const feedbackRef = useRef(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || '';
@@ -24,15 +37,21 @@ function App() {
 
   const runCommand = useCallback((command) => {
     setState(prev => {
-      const next = executeCommand(command, prev, canvasSize);
+      const { removed, ...next } = executeCommand(command, prev, canvasSize);
+      feedbackRef.current = getCommandFeedback(command, { ...next, removed });
       return {
         ...next,
+        lastRemoved: removed || [],
+        shouldSave: next.shouldSave || false,
         undoStack: [...prev.undoStack, prev.shapes],
         redoStack: [],
-        history: [...(prev.history || []), command],
-        shouldSave: false
+        history: [...(prev.history || []), command]
       };
     });
+    if (feedbackRef.current) {
+      setStatusMessage(feedbackRef.current);
+      feedbackRef.current = null;
+    }
   }, [canvasSize]);
 
   const undo = useCallback(() => {
@@ -44,7 +63,8 @@ function App() {
         shapes: lastShapes,
         undoStack: prev.undoStack.slice(0, -1),
         redoStack: [...prev.redoStack, prev.shapes],
-        shouldSave: false
+        shouldSave: false,
+        lastRemoved: []
       };
     });
   }, []);
@@ -58,7 +78,8 @@ function App() {
         shapes: nextShapes,
         redoStack: prev.redoStack.slice(0, -1),
         undoStack: [...prev.undoStack, prev.shapes],
-        shouldSave: false
+        shouldSave: false,
+        lastRemoved: []
       };
     });
   }, []);
@@ -76,14 +97,20 @@ function App() {
           const command = parseCommand(text);
           if (command) {
             command.forEach(runCommand);
-            setStatusMessage(`Executed: ${text}`);
+            const lastCmd = command[command.length - 1];
+            if (lastCmd?.action !== 'delete') {
+              setStatusMessage(`Executed: ${text}`);
+            }
           } else if (needsLLM(text) && LLM_API_KEY) {
             setIsProcessing(true);
             setStatusMessage('Thinking...');
             try {
               const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT);
               commands.forEach(runCommand);
-              setStatusMessage(`Executed: ${text}`);
+              const lastCmd = commands[commands.length - 1];
+              if (lastCmd?.action !== 'delete') {
+                setStatusMessage(`Executed: ${text}`);
+              }
             } catch (err) {
               setStatusMessage(`Failed: ${err.message}`);
             } finally {
@@ -224,6 +251,7 @@ function App() {
         <CommandPanel
           statusMessage={statusMessage}
           currentCommand={lastCommand}
+          lastRemoved={state.lastRemoved}
           onUndo={undo}
           onRedo={redo}
           canUndo={state.undoStack.length > 0}
