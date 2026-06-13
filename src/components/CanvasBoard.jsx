@@ -55,12 +55,17 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes, grid }, ref) {
 
       const gridCtx = gridCanvas.getContext('2d');
       gridCtx.scale(dpr, dpr);
+      if (grid?.visible) {
+        const cssWidth = gridCanvas.width / dpr;
+        const cssHeight = gridCanvas.height / dpr;
+        drawGrid(gridCtx, cssWidth, cssHeight, grid.spacing);
+      }
     }
 
     resize();
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
-  }, []);
+  }, [grid]);
 
   useEffect(() => {
     const gridCanvas = gridCanvasRef.current;

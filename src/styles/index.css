@@ -194,6 +194,7 @@ body {
 
 .canvas-grid {
   z-index: 0;
+  pointer-events: none;
 }
 
 .canvas-shapes {
