@@ -91,6 +91,7 @@ UI Feedback（状态提示）
 | `services/commandParser.js` | 新增删除意图识别与 filters 提取 |
 | `services/executor.js` | 新增 `delete` 分支与匹配算法 |
 | `components/CommandPanel.jsx` | 显示 delete 动作与相关属性 |
+| `App.jsx` | 根据执行结果设置 `statusMessage`，向 `CommandPanel` 传递被删除图形信息 |
 | `tests/` | 新增删除解析与匹配单元测试 |
 
 ---
@@ -108,6 +109,8 @@ UI Feedback（状态提示）
 ### 4.2 Filters 提取
 
 复用现有 `detectColor`、`detectShape`、`detectPosition`、`detectSize`。
+- `color` 会被解析为规范 hex（与现有 draw 命令保持一致）。
+- `position` 保留原始语义，匹配阶段再调用 `resolvePosition`。
 
 范围词：
 - "最后一个 / 最后那个 / last one" → `last: true`
@@ -118,8 +121,8 @@ UI Feedback（状态提示）
 | 输入 | 输出 |
 |------|------|
 | "删除最后一个图形" | `{ action:'delete', filters:{ last:true } }` |
-| "删掉左上角的红方块" | `{ action:'delete', filters:{ color:'red', shape:'rect', position:'top-left' } }` |
-| "删除所有红色的图形" | `{ action:'delete', filters:{ color:'red', all:true } }` |
+| "删掉左上角的红方块" | `{ action:'delete', filters:{ color:'#ef4444', shape:'rect', position:'左上角' } }` |
+| "删除所有红色的图形" | `{ action:'delete', filters:{ color:'#ef4444', all:true } }` |
 | "把所有圆都删掉" | `{ action:'delete', filters:{ shape:'circle', all:true } }` |
 
 ---
@@ -176,8 +179,10 @@ UI Feedback（状态提示）
 ### 7.2 CommandPanel 显示
 
 - `CURRENT ACTION` → `delete`
-- `SUBJECT MATTER` → 被删图形的 `shape` 或 `all`
-- `AESTHETIC STYLE` → 被删图形的 `color` 或 `—`
+- `SUBJECT MATTER` → 被删图形的 `shape`；批量删除时显示 `multiple`
+- `AESTHETIC STYLE` → 被删图形的 `color`；无匹配时显示 `—`
+
+`App.jsx` 需要在 `runCommand` 里读取 `executor` 返回的 `removed` 数组，构造 `statusMessage` 并决定是否把 `lastRemoved` 传给 `CommandPanel`。
 
 ---
 
