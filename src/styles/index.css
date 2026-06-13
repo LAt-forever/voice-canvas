@@ -183,10 +183,21 @@ body {
   overflow: hidden;
 }
 
-.canvas-board canvas {
+.canvas-grid,
+.canvas-shapes {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.canvas-grid {
+  z-index: 0;
+}
+
+.canvas-shapes {
+  z-index: 1;
 }
 
 /* Right Sidebar */
