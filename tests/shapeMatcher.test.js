@@ -52,6 +52,25 @@ describe('findMatchingShapes', () => {
     expect(findMatchingShapes([s1, s2, s3], { color: 'red', all: true }, canvasSize)).toEqual([s1, s2]);
   });
 
+  it('returns empty when last shape fails base filter', () => {
+    const redRect = makeShape({ id: 'a', color: '#ef4444' });
+    const blueCircle = makeShape({ id: 'b', color: '#3b82f6', type: 'circle' });
+    expect(findMatchingShapes([redRect, blueCircle], { last: true, color: 'red' }, canvasSize)).toEqual([]);
+  });
+
+  it('filters by size preset (matching)', () => {
+    const smallRect = makeShape({ id: 'a', width: 80, height: 60 });
+    const mediumRect = makeShape({ id: 'b', width: 160, height: 120 });
+    expect(findMatchingShapes([smallRect, mediumRect], { size: 'small' }, canvasSize)).toEqual([smallRect]);
+  });
+
+  it('filters by size preset (far from requested)', () => {
+    const smallRect = makeShape({ id: 'a', width: 80, height: 60 });
+    const largeRect = makeShape({ id: 'b', width: 320, height: 240 });
+    expect(findMatchingShapes([smallRect, largeRect], { size: 'small' }, canvasSize)).toEqual([smallRect]);
+    expect(findMatchingShapes([smallRect, largeRect], { size: 'large' }, canvasSize)).toEqual([largeRect]);
+  });
+
   it('combines multiple filters', () => {
     const s1 = makeShape({ id: 'a', type: 'rect', color: '#ef4444', x: 40, y: 40 });
     const s2 = makeShape({ id: 'b', type: 'rect', color: '#ef4444', x: 760, y: 40 });
