@@ -50,6 +50,9 @@ npm run test
 - "Undo" / "Redo"
 - "Clear canvas"
 - "Save image"
+- "删除最后一个图形"
+- "删掉左上角的红方块"
+- "删除所有红色的图形"
 - "First draw a red circle, then draw a blue square next to it" (requires LLM API key)
 
 ## LLM Configuration
