@@ -58,7 +58,6 @@ export function createInitialState() {
     undoStack: [],
     redoStack: [],
     history: [],
-    shouldSave: false,
-    lastRemoved: []
+    shouldSave: false
   };
 }
