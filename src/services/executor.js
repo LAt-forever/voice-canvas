@@ -1,6 +1,7 @@
 import { resolveColor } from '../utils/colorMap';
 import { resolvePosition } from '../utils/positionResolver';
 import { resolveSize } from '../utils/sizeResolver';
+import { findMatchingShapes } from './shapeMatcher';
 
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
@@ -24,6 +25,18 @@ export function executeCommand(command, state, canvasSize) {
       };
       return { shapes: [...shapes, newShape], currentColor: newShape.color };
     }
+    case 'delete': {
+      const targets = findMatchingShapes(shapes, command.filters, canvasSize);
+      if (targets.length === 0) {
+        return { shapes, currentColor, removed: [] };
+      }
+      const targetIds = new Set(targets.map(t => t.id));
+      return {
+        shapes: shapes.filter(s => !targetIds.has(s.id)),
+        currentColor,
+        removed: targets
+      };
+    }
     case 'setColor': {
       return { shapes, currentColor: resolveColor(command.color) };
     }
@@ -45,6 +58,7 @@ export function createInitialState() {
     undoStack: [],
     redoStack: [],
     history: [],
-    shouldSave: false
+    shouldSave: false,
+    lastRemoved: []
   };
 }
