@@ -650,6 +650,47 @@ git commit -m "feat: wire delete feedback into UI"
 
 ---
 
+### Task 5: Update README and final verification
+
+**Files:**
+- Modify: `README.md`
+- Test: `npm test` + `npm run build`
+
+- [ ] **Step 1: Add delete examples to README**
+
+In `README.md`, add the following delete examples under the Voice Commands section (after the existing save example):
+
+```markdown
+- "删除最后一个图形"
+- "删掉左上角的红方块"
+- "删除所有红色的图形"
+```
+
+- [ ] **Step 2: Run full test suite**
+
+```bash
+npm test
+```
+
+Expected: all tests PASS.
+
+- [ ] **Step 3: Verify production build**
+
+```bash
+npm run build
+```
+
+Expected: build completes with no errors.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add README.md
+git commit -m "docs: update voice commands with delete examples"
+```
+
+---
+
 ## Self-Review Checklist
 
 1. **Spec coverage:**
