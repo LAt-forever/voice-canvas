@@ -1,4 +1,12 @@
-function CommandPanel({ statusMessage, currentCommand, onUndo, onRedo, canUndo, canRedo, onClear, onSave }) {
+function CommandPanel({ statusMessage, currentCommand, lastRemoved, onUndo, onRedo, canUndo, canRedo, onClear, onSave }) {
+  const isDelete = currentCommand?.action === 'delete';
+  const subjectMatter = isDelete
+    ? (lastRemoved?.length > 1 ? 'multiple' : lastRemoved?.[0]?.shape || '—')
+    : currentCommand?.shape || '—';
+  const aestheticStyle = isDelete
+    ? lastRemoved?.[0]?.color || '—'
+    : currentCommand?.color || '—';
+
   return (
     <aside className="sidebar-right">
       <div className="command-panel-header">
@@ -24,11 +32,11 @@ function CommandPanel({ statusMessage, currentCommand, onUndo, onRedo, canUndo, 
         </div>
         <div className="command-card">
           <span className="command-card-label">SUBJECT MATTER</span>
-          <span className="command-card-value">{currentCommand?.shape || '—'}</span>
+          <span className="command-card-value">{subjectMatter}</span>
         </div>
         <div className="command-card">
           <span className="command-card-label">AESTHETIC STYLE</span>
-          <span className="command-card-value">{currentCommand?.color || '—'}</span>
+          <span className="command-card-value">{aestheticStyle}</span>
         </div>
       </div>
 
