@@ -16,6 +16,21 @@ function getCommandFeedback(command, result) {
   return null;
 }
 
+function getGridFeedback(command) {
+  switch (command.action) {
+    case 'setGrid':
+      return command.visible ? 'Grid shown' : 'Grid hidden';
+    case 'setSnap':
+      return command.snap ? 'Snap enabled' : 'Snap disabled';
+    case 'setGridSize': {
+      const presets = { small: 20, medium: 40, large: 80 };
+      return `Grid spacing set to ${presets[command.size] || 40}px`;
+    }
+    default:
+      return null;
+  }
+}
+
 function App() {
   const canvasRef = useRef(null);
   const [state, setState] = useState(() => ({
@@ -38,7 +53,7 @@ function App() {
   const runCommand = useCallback((command) => {
     setState(prev => {
       const { removed, ...next } = executeCommand(command, prev, canvasSize);
-      feedbackRef.current = getCommandFeedback(command, { ...next, removed });
+      feedbackRef.current = getCommandFeedback(command, { ...next, removed }) || getGridFeedback(command);
       return {
         ...next,
         lastRemoved: removed || [],
@@ -98,7 +113,8 @@ function App() {
           if (command) {
             command.forEach(runCommand);
             const lastCmd = command[command.length - 1];
-            if (lastCmd?.action !== 'delete') {
+            const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize'];
+            if (!feedbackActions.includes(lastCmd?.action)) {
               setStatusMessage(`Executed: ${text}`);
             }
           } else if (needsLLM(text) && LLM_API_KEY) {
@@ -108,7 +124,8 @@ function App() {
               const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT);
               commands.forEach(runCommand);
               const lastCmd = commands[commands.length - 1];
-              if (lastCmd?.action !== 'delete') {
+              const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize'];
+              if (!feedbackActions.includes(lastCmd?.action)) {
                 setStatusMessage(`Executed: ${text}`);
               }
             } catch (err) {
@@ -245,13 +262,14 @@ function App() {
         </aside>
 
         <section className="canvas-area">
-          <CanvasBoard ref={canvasRef} shapes={state.shapes} />
+          <CanvasBoard ref={canvasRef} shapes={state.shapes} grid={state.grid} />
         </section>
 
         <CommandPanel
           statusMessage={statusMessage}
           currentCommand={lastCommand}
           lastRemoved={state.lastRemoved}
+          grid={state.grid}
           onUndo={undo}
           onRedo={redo}
           canUndo={state.undoStack.length > 0}

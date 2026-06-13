@@ -53,6 +53,12 @@ npm run test
 - "删除最后一个图形"
 - "删掉左上角的红方块"
 - "删除所有红色的图形"
+- "显示网格"
+- "隐藏网格"
+- "打开吸附"
+- "关闭吸附"
+- "网格调大"
+- "网格调小"
 - "First draw a red circle, then draw a blue square next to it" (requires LLM API key)
 
 ## LLM Configuration
