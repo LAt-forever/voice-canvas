@@ -16,7 +16,8 @@ function shapeMatchesBaseFilters(shape, filters) {
     return false;
   }
   if (filters.size) {
-    const preset = SIZE_PRESETS[filters.size] || SIZE_PRESETS.medium;
+    const preset = SIZE_PRESETS[filters.size];
+    if (!preset) return true;
     const targetArea = preset.width * preset.height;
     const area = shape.width * shape.height;
     const ratio = Math.max(area, targetArea) / Math.max(Math.min(area, targetArea), 1);
@@ -36,7 +37,8 @@ export function findMatchingShapes(shapes, filters, canvasSize) {
 
   if (filters.position && candidates.length > 0) {
     const anchor = resolvePosition(filters.position, canvasSize.width, canvasSize.height);
-    candidates = candidates.slice().sort((a, b) => distance(a, anchor) - distance(b, anchor));
+    const sorted = candidates.slice().sort((a, b) => distance(a, anchor) - distance(b, anchor));
+    candidates = sorted;
   }
 
   if (candidates.length === 0) return [];
