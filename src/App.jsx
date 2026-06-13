@@ -23,7 +23,7 @@ function getGridFeedback(command) {
     case 'setSnap':
       return command.snap ? 'Snap enabled' : 'Snap disabled';
     case 'setGridSize':
-      return `Grid spacing set to ${GRID_SIZE_PRESETS[command.size] || 40}px`;
+      return `Grid spacing set to ${GRID_SIZE_PRESETS[command.size] || GRID_SIZE_PRESETS.medium}px`;
     default:
       return null;
   }
