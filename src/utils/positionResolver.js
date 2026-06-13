@@ -49,13 +49,13 @@ export function resolvePosition(input, canvasWidth, canvasHeight) {
 }
 
 export function snapPosition(x, y, spacing) {
-  if (!spacing || spacing <= 0) return { x, y }
+  if (!spacing || spacing <= 0) return { x, y };
 
   function snap(value) {
-    const nearest = Math.round(value / spacing) * spacing
-    const distance = Math.abs(value - nearest)
-    return distance < spacing / 2 ? nearest : value
+    const nearest = Math.round(value / spacing) * spacing;
+    const distance = Math.abs(value - nearest);
+    return distance < spacing / 2 ? nearest : value;
   }
 
-  return { x: snap(x), y: snap(y) }
+  return { x: snap(x), y: snap(y) };
 }

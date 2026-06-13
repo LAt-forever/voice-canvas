@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import CanvasBoard from './components/CanvasBoard';
 import CommandPanel from './components/CommandPanel';
 import VoiceBar from './components/VoiceBar';
-import { executeCommand, createInitialState } from './services/executor';
+import { executeCommand, createInitialState, GRID_SIZE_PRESETS } from './services/executor';
 import { createSpeechRecognizer, isSpeechSupported } from './services/speechService';
 import { parseCommand, needsLLM } from './services/commandParser';
 import { parseWithLLM } from './services/llmParser';
@@ -22,10 +22,8 @@ function getGridFeedback(command) {
       return command.visible ? 'Grid shown' : 'Grid hidden';
     case 'setSnap':
       return command.snap ? 'Snap enabled' : 'Snap disabled';
-    case 'setGridSize': {
-      const presets = { small: 20, medium: 40, large: 80 };
-      return `Grid spacing set to ${presets[command.size] || 40}px`;
-    }
+    case 'setGridSize':
+      return `Grid spacing set to ${GRID_SIZE_PRESETS[command.size] || 40}px`;
     default:
       return null;
   }

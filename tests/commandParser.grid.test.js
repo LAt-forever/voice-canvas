@@ -36,11 +36,7 @@ describe('parseCommand - grid', () => {
     expect(needsLLM('网格调小')).toBe(false);
   });
 
-  it('does not parse bare "网格" as a grid command', () => {
-    const result = parseCommand('网格');
-    expect(result).not.toEqual([{ action: 'setGrid', visible: true }]);
-    expect(result).not.toEqual([{ action: 'setGrid', visible: false }]);
-    expect(result).not.toEqual([{ action: 'setGridSize', size: 'large' }]);
-    expect(result).not.toEqual([{ action: 'setGridSize', size: 'small' }]);
+  it('does not parse bare "网格"', () => {
+    expect(parseCommand('网格')).toBeNull();
   });
 });

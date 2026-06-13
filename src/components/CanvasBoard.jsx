@@ -51,30 +51,27 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes, grid }, ref) {
       });
 
       const shapeCtx = shapeCanvas.getContext('2d');
-      shapeCtx.scale(dpr, dpr);
+      shapeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const gridCtx = gridCanvas.getContext('2d');
-      gridCtx.scale(dpr, dpr);
-      if (grid?.visible) {
-        const cssWidth = gridCanvas.width / dpr;
-        const cssHeight = gridCanvas.height / dpr;
-        drawGrid(gridCtx, cssWidth, cssHeight, grid.spacing);
-      }
+      gridCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     resize();
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
-  }, [grid]);
+  }, []);
 
   useEffect(() => {
     const gridCanvas = gridCanvasRef.current;
     if (!gridCanvas) return;
 
     const ctx = gridCanvas.getContext('2d');
-    const cssWidth = gridCanvas.width / (window.devicePixelRatio || 1);
-    const cssHeight = gridCanvas.height / (window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = gridCanvas.width / dpr;
+    const cssHeight = gridCanvas.height / dpr;
 
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
     if (grid?.visible) {
       drawGrid(ctx, cssWidth, cssHeight, grid.spacing);
@@ -86,9 +83,11 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes, grid }, ref) {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const cssWidth = canvas.width / (window.devicePixelRatio || 1);
-    const cssHeight = canvas.height / (window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.width / dpr;
+    const cssHeight = canvas.height / dpr;
 
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
     for (const shape of shapes) {
       const drawer = DRAWERS[shape.type];

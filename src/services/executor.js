@@ -7,7 +7,7 @@ function generateId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-const GRID_SIZE_PRESETS = {
+export const GRID_SIZE_PRESETS = {
   small: 20,
   medium: 40,
   large: 80
