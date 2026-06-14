@@ -1,4 +1,12 @@
-function CommandPanel({ statusMessage, currentCommand, onUndo, onRedo, canUndo, canRedo, onClear, onSave }) {
+function CommandPanel({ statusMessage, currentCommand, lastRemoved, background, grid, onUndo, onRedo, canUndo, canRedo, onClear, onSave }) {
+  const isDelete = currentCommand?.action === 'delete';
+  const subjectMatter = isDelete
+    ? (lastRemoved?.length > 1 ? 'multiple' : lastRemoved?.[0]?.shape || '—')
+    : currentCommand?.shape || '—';
+  const aestheticStyle = isDelete
+    ? lastRemoved?.[0]?.color || '—'
+    : currentCommand?.color || '—';
+
   return (
     <aside className="sidebar-right">
       <div className="command-panel-header">
@@ -24,12 +32,42 @@ function CommandPanel({ statusMessage, currentCommand, onUndo, onRedo, canUndo, 
         </div>
         <div className="command-card">
           <span className="command-card-label">SUBJECT MATTER</span>
-          <span className="command-card-value">{currentCommand?.shape || '—'}</span>
+          <span className="command-card-value">{subjectMatter}</span>
         </div>
         <div className="command-card">
           <span className="command-card-label">AESTHETIC STYLE</span>
-          <span className="command-card-value">{currentCommand?.color || '—'}</span>
+          <span className="command-card-value">{aestheticStyle}</span>
         </div>
+
+        {grid && (
+          <>
+            <div className="command-card">
+              <span className="command-card-label">GRID</span>
+              <span className="command-card-value">{grid.visible ? 'On' : 'Off'}</span>
+            </div>
+            <div className="command-card">
+              <span className="command-card-label">SNAP</span>
+              <span className="command-card-value">{grid.snap ? 'On' : 'Off'}</span>
+            </div>
+            <div className="command-card">
+              <span className="command-card-label">SPACING</span>
+              <span className="command-card-value">{grid.spacing}px</span>
+            </div>
+          </>
+        )}
+
+        {background && (
+          <>
+            <div className="command-card">
+              <span className="command-card-label">BACKGROUND TYPE</span>
+              <span className="command-card-value">{background.type}</span>
+            </div>
+            <div className="command-card">
+              <span className="command-card-label">BACKGROUND COLOR</span>
+              <span className="command-card-value">{background.color}</span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="command-actions">
