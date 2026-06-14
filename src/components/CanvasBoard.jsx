@@ -3,6 +3,7 @@ import { drawRect } from '../shapes/drawRect';
 import { drawCircle } from '../shapes/drawCircle';
 import { drawLine } from '../shapes/drawLine';
 import { drawTriangle } from '../shapes/drawTriangle';
+import { renderBackground } from '../utils/backgroundRenderer';
 
 const DRAWERS = {
   rect: drawRect,
@@ -11,25 +12,34 @@ const DRAWERS = {
   triangle: drawTriangle
 };
 
-const CanvasBoard = forwardRef(function CanvasBoard({ shapes }, ref) {
-  const canvasRef = useRef(null);
+const CanvasBoard = forwardRef(function CanvasBoard({ shapes, background }, ref) {
+  const bgCanvasRef = useRef(null);
+  const gridCanvasRef = useRef(null);
+  const shapeCanvasRef = useRef(null);
   const containerRef = useRef(null);
 
   useEffect(() => {
     function resize() {
-      const canvas = canvasRef.current;
       const container = containerRef.current;
-      if (!canvas || !container) return;
+      const bgCanvas = bgCanvasRef.current;
+      const gridCanvas = gridCanvasRef.current;
+      const shapeCanvas = shapeCanvasRef.current;
+      if (!container || !bgCanvas || !gridCanvas || !shapeCanvas) return;
 
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
 
-      const ctx = canvas.getContext('2d');
-      ctx.scale(dpr, dpr);
+      [bgCanvas, gridCanvas, shapeCanvas].forEach((canvas) => {
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+      });
+
+      [bgCanvas, gridCanvas, shapeCanvas].forEach((canvas) => {
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      });
     }
 
     resize();
@@ -38,14 +48,30 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes }, ref) {
   }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = bgCanvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
-    const cssWidth = canvas.width / (window.devicePixelRatio || 1);
-    const cssHeight = canvas.height / (window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.width / dpr;
+    const cssHeight = canvas.height / dpr;
 
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
+    renderBackground(ctx, cssWidth, cssHeight, background);
+  }, [background]);
 
+  useEffect(() => {
+    const canvas = shapeCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.width / dpr;
+    const cssHeight = canvas.height / dpr;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
     for (const shape of shapes) {
       const drawer = DRAWERS[shape.type];
       if (drawer) drawer(ctx, shape);
@@ -54,14 +80,25 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes }, ref) {
 
   useImperativeHandle(ref, () => ({
     exportImage() {
-      const canvas = canvasRef.current;
-      return canvas ? canvas.toDataURL('image/png') : null;
+      const bgCanvas = bgCanvasRef.current;
+      const shapeCanvas = shapeCanvasRef.current;
+      if (!bgCanvas || !shapeCanvas) return null;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = bgCanvas.width;
+      canvas.height = bgCanvas.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bgCanvas, 0, 0);
+      ctx.drawImage(shapeCanvas, 0, 0);
+      return canvas.toDataURL('image/png');
     }
   }));
 
   return (
     <div ref={containerRef} className="canvas-board">
-      <canvas ref={canvasRef} />
+      <canvas ref={bgCanvasRef} className="canvas-background" />
+      <canvas ref={gridCanvasRef} className="canvas-grid" />
+      <canvas ref={shapeCanvasRef} className="canvas-shapes" />
     </div>
   );
 });
