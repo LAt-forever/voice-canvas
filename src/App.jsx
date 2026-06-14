@@ -7,6 +7,9 @@ import { executeCommand, createInitialState, GRID_SIZE_PRESETS } from './service
 import { createSpeechRecognizer, isSpeechSupported } from './services/speechService';
 import { parseCommand, needsLLM } from './services/commandParser';
 import { parseWithLLM } from './services/llmParser';
+import { describeCommand } from './utils/describeCommand';
+import { isConfirm, isCancel } from './utils/confirmationMatcher';
+import CommandPlanPanel from './components/CommandPlanPanel';
 
 function getCommandFeedback(command, result) {
   if (command.action === 'delete') {
@@ -69,6 +72,9 @@ function App() {
   const feedbackRef = useRef(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState(null);
+  const pendingPlanRef = useRef(null);
+  const confirmationTimerRef = useRef(null);
   const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || '';
   const LLM_API_ENDPOINT = import.meta.env.VITE_LLM_API_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions';
   const LLM_MODEL = import.meta.env.VITE_LLM_MODEL || 'deepseek-chat';
@@ -94,6 +100,34 @@ function App() {
       feedbackRef.current = null;
     }
   }, [canvasSize]);
+
+  const clearPendingPlan = useCallback(() => {
+    if (confirmationTimerRef.current) {
+      clearTimeout(confirmationTimerRef.current);
+      confirmationTimerRef.current = null;
+    }
+    pendingPlanRef.current = null;
+    setPendingPlan(null);
+    setStatusMessage('已取消');
+  }, []);
+
+  const executePendingPlan = useCallback(() => {
+    const plan = pendingPlanRef.current;
+    if (!plan) return;
+    if (confirmationTimerRef.current) {
+      clearTimeout(confirmationTimerRef.current);
+      confirmationTimerRef.current = null;
+    }
+    plan.commands.forEach(runCommand);
+    pendingPlanRef.current = null;
+    setPendingPlan(null);
+    setStatusMessage(`已执行 ${plan.commands.length} 个步骤`);
+  }, [runCommand]);
+
+  const executePendingPlanRef = useRef(executePendingPlan);
+  const clearPendingPlanRef = useRef(clearPendingPlan);
+  executePendingPlanRef.current = executePendingPlan;
+  clearPendingPlanRef.current = clearPendingPlan;
 
   const undo = useCallback(() => {
     setState(prev => {
@@ -139,6 +173,14 @@ function App() {
       onResult: async (text, isFinal) => {
         setTranscript(text);
         if (isFinal) {
+          if (pendingPlanRef.current) {
+            if (isConfirm(text)) {
+              executePendingPlanRef.current();
+            } else if (isCancel(text)) {
+              clearPendingPlanRef.current();
+            }
+            return;
+          }
           const command = parseCommand(text);
           if (command) {
             command.forEach(runCommand);
@@ -152,14 +194,22 @@ function App() {
             setStatusMessage('Thinking...');
             try {
               const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT, LLM_MODEL);
-              commands.forEach(runCommand);
-              const lastCmd = commands[commands.length - 1];
-              const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground', 'createLayer', 'switchLayer', 'renameLayer', 'toggleLayerVisibility', 'deleteLayer'];
-              if (!feedbackActions.includes(lastCmd?.action)) {
-                setStatusMessage(`Executed: ${text}`);
+              if (!commands || commands.length === 0) {
+                setStatusMessage('未能解析出执行计划');
+                return;
               }
+              const descriptions = commands.map(describeCommand);
+              const plan = { commands, descriptions, startedAt: Date.now() };
+              pendingPlanRef.current = plan;
+              setPendingPlan(plan);
+              setStatusMessage('请说“确认”执行，或“取消”放弃');
+              confirmationTimerRef.current = setTimeout(() => {
+                pendingPlanRef.current = null;
+                setPendingPlan(null);
+                setStatusMessage('计划已超时取消');
+              }, 5000);
             } catch (err) {
-              setStatusMessage(`Failed: ${err.message}`);
+              setStatusMessage(`解析失败：${err.message}`);
             } finally {
               setIsProcessing(false);
             }
@@ -300,6 +350,15 @@ function App() {
         <section className="canvas-area">
           <CanvasBoard ref={canvasRef} shapes={state.shapes} background={state.background} grid={state.grid} layers={state.layers} />
         </section>
+
+        {pendingPlan && (
+          <CommandPlanPanel
+            descriptions={pendingPlan.descriptions}
+            timeoutMs={5000}
+            onConfirm={executePendingPlan}
+            onCancel={clearPendingPlan}
+          />
+        )}
 
         <LayerPanel
           layers={state.layers}
