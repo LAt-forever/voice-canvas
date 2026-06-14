@@ -24,6 +24,12 @@ export const GRID_SIZE_PRESETS = {
   large: 80
 };
 
+export const PORTRAIT_SIZE_PRESETS = {
+  small: { width: 256, height: 256 },
+  medium: { width: 384, height: 384 },
+  large: { width: 512, height: 512 }
+};
+
 export function executeCommand(command, state, canvasSize) {
   const { shapes, currentColor, grid = { visible: true, snap: true, spacing: 40 }, background, layers, currentLayerId } = state;
 
@@ -43,6 +49,30 @@ export function executeCommand(command, state, canvasSize) {
         height: size.height,
         color: resolveColor(command.color || currentColor),
         layerId: state.currentLayerId
+      };
+      return { shapes: [...shapes, newShape], currentColor: newShape.color, grid, background, layers, currentLayerId };
+    }
+    case 'drawPortrait': {
+      let position = resolvePosition(command.position, canvasSize.width, canvasSize.height);
+      if (grid?.snap) {
+        position = snapPosition(position.x, position.y, grid.spacing);
+      }
+      const size = PORTRAIT_SIZE_PRESETS[command.size] || PORTRAIT_SIZE_PRESETS.medium;
+      const newShape = {
+        id: generateId(),
+        type: 'portrait',
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+        color: resolveColor(command.color || currentColor),
+        layerId: state.currentLayerId,
+        description: command.description || 'portrait',
+        prompt: command.prompt,
+        strokes: [],
+        animationProgress: 0,
+        isAnimating: false,
+        sourcePrompt: command.prompt
       };
       return { shapes: [...shapes, newShape], currentColor: newShape.color, grid, background, layers, currentLayerId };
     }
