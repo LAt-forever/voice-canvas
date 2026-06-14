@@ -39,8 +39,7 @@
     commands: Command[],      // LLM 返回的 JSON 命令数组
     descriptions: string[],   // 每步中文描述
     startedAt: number         // 时间戳，用于超时倒计时
-  },
-  isConfirming: boolean       // 是否处于确认监听态
+  }
 }
 ```
 
@@ -65,7 +64,7 @@ parseWithLLM(text) 返回命令数组
     ↓
 describeCommand(commands) 生成中文步骤描述
     ↓
-App.jsx 设置 pendingPlan + isConfirming
+App.jsx 设置 pendingPlan
     ↓
 CommandPlanPanel 展示计划、倒计时、确认/取消按钮
     ↓
@@ -81,7 +80,7 @@ CommandPlanPanel 展示计划、倒计时、确认/取消按钮
 | `services/llmParser.js` | 无需改动，已返回命令数组 |
 | `utils/describeCommand.js`（新建） | 将命令对象转换为中文自然语言描述 |
 | `components/CommandPlanPanel.jsx`（新建） | 展示计划步骤、倒计时、确认/取消按钮 |
-| `App.jsx` | 管理 `pendingPlan` / `isConfirming`，处理确认/取消语音分支 |
+| `App.jsx` | 管理 `pendingPlan`，处理确认/取消语音分支 |
 | `styles/index.css` | 新增面板样式 |
 | `tests/describeCommand.test.js`（新建） | 描述生成单元测试 |
 | `README.md` | 补充高级指令解析与确认词说明 |
