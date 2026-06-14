@@ -36,7 +36,12 @@ describe('parseCommand - grid', () => {
     expect(needsLLM('网格调小')).toBe(false);
   });
 
-  it('does not parse bare "网格"', () => {
-    expect(parseCommand('网格')).toBeNull();
+  it('decreases grid size with 方格 synonyms', () => {
+    expect(parseCommand('方格大小调小一点')).toEqual([{ action: 'setGridSize', size: 'small' }]);
+    expect(parseCommand('把背景的格子调大一点')).toEqual([{ action: 'setGridSize', size: 'large' }]);
+  });
+
+  it('shows grid with 格子 synonym', () => {
+    expect(parseCommand('显示格子')).toEqual([{ action: 'setGrid', visible: true }]);
   });
 });

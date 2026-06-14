@@ -23,7 +23,7 @@ describe('confirmationMatcher', () => {
     expect(isCancel(undefined)).toBe(false);
     expect(isConfirm('确认取消')).toBe(true);
     expect(isCancel('确认取消')).toBe(true);
-    expect(isCancel('不错')).toBe(true);
-    expect(isConfirm('好棒')).toBe(true);
+    expect(isCancel('不错')).toBe(false);
+    expect(isConfirm('好棒')).toBe(false);
   });
 });

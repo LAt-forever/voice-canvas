@@ -167,10 +167,13 @@ function App() {
           if (pendingPlanRef.current) {
             if (isConfirm(text)) {
               executePendingPlanRef.current();
-            } else if (isCancel(text)) {
-              clearPendingPlanRef.current();
+              return;
             }
-            return;
+            if (isCancel(text)) {
+              clearPendingPlanRef.current();
+              return;
+            }
+            clearPendingPlanRef.current();
           }
           const command = parseCommand(text);
           if (command) {

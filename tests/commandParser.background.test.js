@@ -57,4 +57,13 @@ describe('parseCommand - background', () => {
       background: { type: 'solid', color: '#ffffff' }
     }]);
   });
+
+  it('does not treat grid-size phrase as background', () => {
+    const result = parseCommand('把画布背景的方格大小调小一点');
+    expect(result).not.toEqual([{
+      action: 'setBackground',
+      background: expect.any(Object)
+    }]);
+    expect(result).toEqual([{ action: 'setGridSize', size: 'small' }]);
+  });
 });

@@ -1,9 +1,9 @@
 import { resolveColor } from '../utils/colorMap';
 
 const SHAPE_SYNONYMS = {
-  rect: ['rect', 'rectangle', '方块', '方', '矩形'],
-  circle: ['circle', '圆', '圆形'],
-  line: ['line', '直线', '线'],
+  rect: ['rect', 'rectangle', '方块', '方', '矩形', '举行', '长方形', '正方'],
+  circle: ['circle', '圆', '圆形', '园'],
+  line: ['line', '直线', '线', '条'],
   triangle: ['triangle', '三角形', '三角']
 };
 
@@ -16,9 +16,14 @@ function detectShape(text) {
   return null;
 }
 
+const ENGLISH_COLOR_NAMES = ['red', 'green', 'blue', 'yellow', 'purple', 'orange', 'pink', 'cyan', 'black', 'white', 'gray'];
+
 function detectColor(text) {
-  const colorNames = ['红', '绿', '蓝', '黄', '紫', '橙', '粉', '青', '黑', '白', '灰'];
-  for (const name of colorNames) {
+  const chineseColorChars = ['红', '绿', '蓝', '黄', '紫', '橙', '粉', '青', '黑', '白', '灰'];
+  for (const name of chineseColorChars) {
+    if (text.includes(name)) return resolveColor(name);
+  }
+  for (const name of ENGLISH_COLOR_NAMES) {
     if (text.includes(name)) return resolveColor(name);
   }
   const hexMatch = text.match(/#([0-9a-fA-F]{6})/);
@@ -31,7 +36,9 @@ const POSITION_KEYWORDS = [
   '左上', '右上', '左下', '右下',
   '上方', '下方', '左边', '右边',
   '上', '下', '左', '右',
-  '中间', '中央', '中心', 'center'
+  '中间', '中央', '中心', 'center',
+  'top-left', 'top-right', 'bottom-left', 'bottom-right',
+  'top', 'bottom', 'left', 'right', 'middle'
 ];
 
 function extractPosition(text) {
@@ -46,12 +53,18 @@ function detectPosition(text) {
 }
 
 function detectSize(text) {
-  if (text.includes('大')) return 'large';
+  if (text.includes('big') || text.includes('large') || text.includes('大号')) return 'large';
+  if (text.includes('small') || text.includes('tiny') || text.includes('小号')) return 'small';
+  if (text.includes('中号') || text.includes('medium')) return 'medium';
   if (text.includes('小')) return 'small';
+  if (text.includes('大')) return 'large';
   return 'medium';
 }
 
 function extractSize(text) {
+  if (text.includes('big') || text.includes('large') || text.includes('大号')) return 'large';
+  if (text.includes('small') || text.includes('tiny') || text.includes('小号')) return 'small';
+  if (text.includes('中号') || text.includes('medium')) return 'medium';
   if (text.includes('大')) return 'large';
   if (text.includes('小')) return 'small';
   return null;
@@ -77,9 +90,13 @@ const DIRECTION_KEYWORDS = {
 };
 
 function isBackgroundCommand(text) {
-  if (text.includes('背景') || text.includes('background')) return true;
   const backgroundMarkers = ['渐变', '条纹', '棋盘', '星空', '噪点', '颗粒', '点阵', '圆点'];
-  return backgroundMarkers.some(marker => text.includes(marker));
+  if (backgroundMarkers.some(marker => text.includes(marker))) return true;
+  if (text.includes('背景') || text.includes('background')) {
+    const actionMarkers = ['改', '换', '变', '变成', '设置', '重置', '默认', '恢复', 'set', 'change'];
+    return actionMarkers.some(marker => text.includes(marker));
+  }
+  return false;
 }
 
 function detectDirection(text) {
@@ -237,21 +254,28 @@ function parseDeleteCommand(text) {
 }
 
 function isGridCommand(text) {
-  return text.includes('网格') || text.includes('吸附') || text.includes('grid') || text.includes('snap');
+  const gridNouns = ['网格', '方格', '格子', '吸附', 'grid', 'snap'];
+  const hasGridNoun = gridNouns.some(noun => text.includes(noun));
+  if (!hasGridNoun) return false;
+  const gridActions = ['显示', '隐藏', '打开', '关闭', '开启', '调大', '调小', '大一点', '小一点'];
+  return gridActions.some(action => text.includes(action)) ||
+    text.includes('大小') || text.includes('尺寸') || text.includes('间距');
 }
 
 function parseGridCommand(text) {
-  if (text.includes('网格')) {
-    if (text.includes('显示') || text.includes('打开') || text.includes('show')) {
+  const hasGridNoun = ['网格', '方格', '格子'].some(noun => text.includes(noun)) || text.includes('grid');
+
+  if (hasGridNoun) {
+    if (text.includes('显示') || text.includes('打开') || text.includes('show') || text.includes('开启')) {
       return { action: 'setGrid', visible: true };
     }
     if (text.includes('隐藏') || text.includes('关闭') || text.includes('hide')) {
       return { action: 'setGrid', visible: false };
     }
-    if (text.includes('调大') || text.includes('大一点') || text.includes('bigger')) {
+    if (text.includes('调大') || text.includes('大一点') || text.includes('bigger') || text.includes('大号')) {
       return { action: 'setGridSize', size: 'large' };
     }
-    if (text.includes('调小') || text.includes('小一点') || text.includes('smaller')) {
+    if (text.includes('调小') || text.includes('小一点') || text.includes('smaller') || text.includes('小号')) {
       return { action: 'setGridSize', size: 'small' };
     }
   }
@@ -276,17 +300,17 @@ export function parseCommand(text) {
     if (layerCmd) return [layerCmd];
   }
 
+  if (isGridCommand(normalized)) {
+    const gridCmd = parseGridCommand(normalized);
+    if (gridCmd) return [gridCmd];
+  }
+
   if (isBackgroundCommand(normalized)) {
     return [parseBackgroundCommand(normalized)];
   }
 
   if (isDeleteCommand(normalized)) {
     return [parseDeleteCommand(normalized)];
-  }
-
-  if (isGridCommand(normalized)) {
-    const gridCmd = parseGridCommand(normalized);
-    if (gridCmd) return [gridCmd];
   }
 
   if (normalized.includes('撤销')) {
