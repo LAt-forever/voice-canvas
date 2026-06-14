@@ -15,4 +15,15 @@ describe('confirmationMatcher', () => {
     expect(isCancel('不要算了')).toBe(true);
     expect(isCancel('确认')).toBe(false);
   });
+
+  it('handles edge cases', () => {
+    expect(isConfirm('')).toBe(false);
+    expect(isCancel('')).toBe(false);
+    expect(isConfirm(null)).toBe(false);
+    expect(isCancel(undefined)).toBe(false);
+    expect(isConfirm('确认取消')).toBe(true);
+    expect(isCancel('确认取消')).toBe(true);
+    expect(isCancel('不错')).toBe(true);
+    expect(isConfirm('好棒')).toBe(true);
+  });
 });
