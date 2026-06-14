@@ -20,6 +20,22 @@ describe('describeCommand', () => {
     expect(describeCommand(cmd)).toContain('背景');
   });
 
+  it('describes gradient background', () => {
+    const cmd = { action: 'setBackground', background: { type: 'gradient', direction: 'to-right', color: 'red', color2: 'blue' } };
+    expect(describeCommand(cmd)).toContain('背景');
+    expect(describeCommand(cmd)).toContain('红色');
+    expect(describeCommand(cmd)).toContain('蓝色');
+    expect(describeCommand(cmd)).toContain('渐变');
+  });
+
+  it('describes pattern background', () => {
+    const cmd = { action: 'setBackground', background: { type: 'pattern', subtype: 'stripes', color: 'green', color2: 'yellow' } };
+    expect(describeCommand(cmd)).toContain('背景');
+    expect(describeCommand(cmd)).toContain('条纹');
+    expect(describeCommand(cmd)).toContain('绿色');
+    expect(describeCommand(cmd)).toContain('黄色');
+  });
+
   it('describes createLayer', () => {
     const cmd = { action: 'createLayer' };
     expect(describeCommand(cmd)).toContain('新建');

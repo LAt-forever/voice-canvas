@@ -48,16 +48,23 @@ const COLOR_MAP = {
   '#6b7280': '灰色'
 };
 
+const ENGLISH_COLOR_NAMES = {
+  red: '红色', green: '绿色', blue: '蓝色', yellow: '黄色',
+  purple: '紫色', orange: '橙色', pink: '粉色', cyan: '青色',
+  black: '黑色', white: '白色', gray: '灰色'
+};
+
+const GRID_SIZE_NAMES = {
+  small: '小',
+  medium: '中',
+  large: '大'
+};
+
 function colorName(color) {
   if (!color) return '';
   const normalized = String(color).toLowerCase();
   if (COLOR_MAP[normalized]) return COLOR_MAP[normalized];
-  const names = {
-    red: '红色', green: '绿色', blue: '蓝色', yellow: '黄色',
-    purple: '紫色', orange: '橙色', pink: '粉色', cyan: '青色',
-    black: '黑色', white: '白色', gray: '灰色'
-  };
-  return names[normalized] || color;
+  return ENGLISH_COLOR_NAMES[normalized] || color;
 }
 
 export function describeCommand(command) {
@@ -78,15 +85,15 @@ export function describeCommand(command) {
       }
       if (bg.type === 'gradient') {
         const dir = DIRECTION_NAMES[bg.direction] || '';
-        return `将背景设置为${dir}${colorName(bg.color)}到${colorName(bg.color2)}渐变`;
+        return `将背景设置为${dir}${colorName(bg.color || '')}到${colorName(bg.color2 || '')}渐变`;
       }
       if (bg.type === 'pattern') {
         const subtype = bg.subtype === 'stripes' ? '条纹' : bg.subtype === 'checkerboard' ? '棋盘格' : '点阵';
-        return `将背景设置为${subtype}${colorName(bg.color)}与${colorName(bg.color2)}图案`;
+        return `将背景设置为${subtype}${colorName(bg.color || '')}与${colorName(bg.color2 || '')}图案`;
       }
       if (bg.type === 'texture') {
         const subtype = bg.subtype === 'starry' ? '星空' : '噪点';
-        return `将背景设置为${subtype}${colorName(bg.color)}纹理`;
+        return `将背景设置为${subtype}${colorName(bg.color || '')}纹理`;
       }
       return '设置背景';
     }
@@ -95,8 +102,7 @@ export function describeCommand(command) {
     case 'setSnap':
       return command.snap ? '开启网格吸附' : '关闭网格吸附';
     case 'setGridSize': {
-      const sizeMap = { small: '小', medium: '中', large: '大' };
-      return `设置网格间距为${sizeMap[command.size] || command.size}`;
+      return `设置网格间距为${GRID_SIZE_NAMES[command.size] || command.size}`;
     }
     case 'createLayer':
       return '新建一个图层并切换到它';
