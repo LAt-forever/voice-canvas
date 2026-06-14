@@ -68,7 +68,6 @@ export function executeCommand(command, state, canvasSize) {
         color: resolveColor(command.color || currentColor),
         layerId: state.currentLayerId,
         description: command.description || 'portrait',
-        prompt: command.prompt,
         strokes: [],
         animationProgress: 0,
         isAnimating: false,

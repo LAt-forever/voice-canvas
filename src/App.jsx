@@ -9,7 +9,7 @@ import { parseCommand, needsLLM, extractParameter } from './services/commandPars
 import { parseWithClarification, createPlanDescription } from './services/llmParser';
 import { isConfirm, isCancel, isSkip } from './utils/confirmationMatcher';
 import CommandPlanPanel from './components/CommandPlanPanel';
-import { portraitPipeline } from './services/portraitPipeline';
+import { portraitPipeline, terminateWorker } from './services/portraitPipeline';
 import * as portraitAnimatorModule from './services/portraitAnimator';
 import PencilCursor from './components/PencilCursor';
 
@@ -198,6 +198,7 @@ function App() {
     planStateRef.current = null;
     setPlanState(null);
     portraitAbortRef.current = true;
+    terminateWorker();
     setIsPortraitProcessing(false);
     setStatusMessage('Cancelled');
   }, []);

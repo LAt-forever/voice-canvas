@@ -1,9 +1,4 @@
-export function mapPoint(point, shape) {
-  return {
-    x: shape.x + (point.x - 0.5) * shape.width,
-    y: shape.y + (point.y - 0.5) * shape.height
-  };
-}
+import { mapPoint } from '../services/portraitAnimator';
 
 function renderStroke(ctx, stroke, shape, progress) {
   const points = stroke.points.map(p => mapPoint(p, shape));
