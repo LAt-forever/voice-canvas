@@ -143,7 +143,7 @@ function App() {
           if (command) {
             command.forEach(runCommand);
             const lastCmd = command[command.length - 1];
-            const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground'];
+            const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground', 'createLayer', 'switchLayer', 'renameLayer', 'toggleLayerVisibility', 'deleteLayer'];
             if (!feedbackActions.includes(lastCmd?.action)) {
               setStatusMessage(`Executed: ${text}`);
             }
@@ -154,7 +154,7 @@ function App() {
               const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT, LLM_MODEL);
               commands.forEach(runCommand);
               const lastCmd = commands[commands.length - 1];
-              const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground'];
+              const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground', 'createLayer', 'switchLayer', 'renameLayer', 'toggleLayerVisibility', 'deleteLayer'];
               if (!feedbackActions.includes(lastCmd?.action)) {
                 setStatusMessage(`Executed: ${text}`);
               }
