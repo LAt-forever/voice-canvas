@@ -76,16 +76,26 @@ npm run test
 
 ## LLM Configuration
 
-For complex multi-step commands, copy `.env.example` to `.env` and add your API key:
+For complex multi-step commands and portrait generation, copy `.env.example` to `.env` and add your API keys:
 
 ```bash
 VITE_LLM_API_KEY=your-api-key
 VITE_LLM_API_ENDPOINT=https://api.deepseek.com/v1/chat/completions
+VITE_STABILITY_API_KEY=your-stability-key
 ```
 
-You can use DeepSeek, OpenAI, or any OpenAI-compatible API.
+You can use DeepSeek, OpenAI, or any OpenAI-compatible API for LLM command parsing.
 
-### Advanced Command Parsing
+### Environment Variables
+
+| Variable | Purpose |
+|---|---|
+| `VITE_LLM_API_KEY` | DeepSeek / OpenAI-compatible API key for command parsing |
+| `VITE_LLM_API_ENDPOINT` | LLM API endpoint URL |
+| `VITE_LLM_MODEL` | LLM model name, e.g. `deepseek-chat` |
+| `VITE_STABILITY_API_KEY` | Stability AI key for portrait generation |
+| `VITE_STABILITY_API_ENDPOINT` | Stability AI image generation endpoint |
+| `VITE_PORTRAIT_MODEL` | Stability model, e.g. `sd3-medium` |
 
 当一句话包含多步操作时，VoiceCanvas 会调用 LLM 解析为执行计划，并在面板上展示每一步，等待你确认。（需要配置 LLM API key）
 
