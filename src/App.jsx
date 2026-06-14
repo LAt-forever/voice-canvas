@@ -121,7 +121,7 @@ function App() {
     plan.commands.forEach(runCommand);
     pendingPlanRef.current = null;
     setPendingPlan(null);
-    setStatusMessage(`已执行 ${plan.commands.length} 个步骤`);
+    setStatusMessage(`Executed ${plan.commands.length} steps`);
   }, [runCommand]);
 
   const executePendingPlanRef = useRef(executePendingPlan);
@@ -195,14 +195,14 @@ function App() {
             try {
               const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT, LLM_MODEL);
               if (!commands || commands.length === 0) {
-                setStatusMessage('未能解析出执行计划');
+                setStatusMessage('No plan generated');
                 return;
               }
               const descriptions = commands.map(describeCommand);
               const plan = { commands, descriptions, startedAt: Date.now() };
               pendingPlanRef.current = plan;
               setPendingPlan(plan);
-              setStatusMessage('请说“确认”执行，或“取消”放弃');
+              setStatusMessage('Say "confirm" to execute or "cancel" to abort');
               confirmationTimerRef.current = setTimeout(() => {
                 clearPendingPlanRef.current();
                 setStatusMessage('Plan cancelled (timeout)');
