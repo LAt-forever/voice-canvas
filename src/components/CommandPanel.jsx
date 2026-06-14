@@ -1,4 +1,4 @@
-function CommandPanel({ statusMessage, currentCommand, lastRemoved, background, grid, onUndo, onRedo, canUndo, canRedo, onClear, onSave }) {
+function CommandPanel({ statusMessage, currentCommand, lastRemoved, background, grid, layers, currentLayerId, onUndo, onRedo, canUndo, canRedo, onClear, onSave }) {
   const isDelete = currentCommand?.action === 'delete';
   const subjectMatter = isDelete
     ? (lastRemoved?.length > 1 ? 'multiple' : lastRemoved?.[0]?.shape || '—')
@@ -6,6 +6,8 @@ function CommandPanel({ statusMessage, currentCommand, lastRemoved, background, 
   const aestheticStyle = isDelete
     ? lastRemoved?.[0]?.color || '—'
     : currentCommand?.color || '—';
+
+  const currentLayer = layers?.find(l => l.id === currentLayerId);
 
   return (
     <aside className="sidebar-right">
@@ -37,6 +39,11 @@ function CommandPanel({ statusMessage, currentCommand, lastRemoved, background, 
         <div className="command-card">
           <span className="command-card-label">AESTHETIC STYLE</span>
           <span className="command-card-value">{aestheticStyle}</span>
+        </div>
+
+        <div className="command-card">
+          <span className="command-card-label">CURRENT LAYER</span>
+          <span className="command-card-value">{currentLayer?.name || '—'}</span>
         </div>
 
         {grid && (

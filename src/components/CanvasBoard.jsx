@@ -29,7 +29,7 @@ function drawGrid(ctx, width, height, spacing) {
   ctx.restore();
 }
 
-const CanvasBoard = forwardRef(function CanvasBoard({ shapes, background, grid }, ref) {
+const CanvasBoard = forwardRef(function CanvasBoard({ shapes, layers, background, grid }, ref) {
   const bgCanvasRef = useRef(null);
   const gridCanvasRef = useRef(null);
   const shapeCanvasRef = useRef(null);
@@ -105,11 +105,19 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes, background, grid }
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+    const visibleLayerIds = new Set(
+      (layers || [])
+        .filter((layer) => layer.visible)
+        .map((layer) => layer.id)
+    );
+
     for (const shape of shapes) {
+      if (shape.layerId && !visibleLayerIds.has(shape.layerId)) continue;
       const drawer = DRAWERS[shape.type];
       if (drawer) drawer(ctx, shape);
     }
-  }, [shapes]);
+  }, [shapes, layers]);
 
   useImperativeHandle(ref, () => ({
     exportImage() {

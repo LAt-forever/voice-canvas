@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import CanvasBoard from './components/CanvasBoard';
+import LayerPanel from './components/LayerPanel';
 import CommandPanel from './components/CommandPanel';
 import VoiceBar from './components/VoiceBar';
 import { executeCommand, createInitialState, GRID_SIZE_PRESETS } from './services/executor';
@@ -33,6 +34,25 @@ function getGridFeedback(command) {
   }
 }
 
+function getLayerFeedback(command, state) {
+  switch (command.action) {
+    case 'createLayer':
+      return 'Layer created';
+    case 'switchLayer': {
+      const targetLayer = state.layers.find(l => l.id === command.target);
+      return `Switched to ${targetLayer?.name || command.target}`;
+    }
+    case 'renameLayer':
+      return `Layer renamed to ${command.name}`;
+    case 'toggleLayerVisibility':
+      return command.visible ? 'Layer shown' : 'Layer hidden';
+    case 'deleteLayer':
+      return 'Layer deleted';
+    default:
+      return null;
+  }
+}
+
 function App() {
   const canvasRef = useRef(null);
   const [state, setState] = useState(() => ({
@@ -56,12 +76,15 @@ function App() {
   const runCommand = useCallback((command) => {
     setState(prev => {
       const { removed, ...next } = executeCommand(command, prev, canvasSize);
-      feedbackRef.current = getCommandFeedback(command, { ...next, removed }) || getGridFeedback(command);
+      const feedback = getCommandFeedback(command, { ...next, removed })
+        || getGridFeedback(command)
+        || getLayerFeedback(command, next);
+      feedbackRef.current = feedback;
       return {
         ...next,
         lastRemoved: removed || [],
         shouldSave: next.shouldSave || false,
-        undoStack: [...prev.undoStack, prev.shapes],
+        undoStack: [...prev.undoStack, { shapes: prev.shapes, layers: prev.layers, currentLayerId: prev.currentLayerId }],
         redoStack: [],
         history: [...(prev.history || []), command]
       };
@@ -75,12 +98,14 @@ function App() {
   const undo = useCallback(() => {
     setState(prev => {
       if (prev.undoStack.length === 0) return prev;
-      const lastShapes = prev.undoStack[prev.undoStack.length - 1];
+      const lastSnapshot = prev.undoStack[prev.undoStack.length - 1];
       return {
         ...prev,
-        shapes: lastShapes,
+        shapes: lastSnapshot.shapes,
+        layers: lastSnapshot.layers,
+        currentLayerId: lastSnapshot.currentLayerId,
         undoStack: prev.undoStack.slice(0, -1),
-        redoStack: [...prev.redoStack, prev.shapes],
+        redoStack: [...prev.redoStack, { shapes: prev.shapes, layers: prev.layers, currentLayerId: prev.currentLayerId }],
         shouldSave: false,
         lastRemoved: []
       };
@@ -90,12 +115,14 @@ function App() {
   const redo = useCallback(() => {
     setState(prev => {
       if (prev.redoStack.length === 0) return prev;
-      const nextShapes = prev.redoStack[prev.redoStack.length - 1];
+      const nextSnapshot = prev.redoStack[prev.redoStack.length - 1];
       return {
         ...prev,
-        shapes: nextShapes,
+        shapes: nextSnapshot.shapes,
+        layers: nextSnapshot.layers,
+        currentLayerId: nextSnapshot.currentLayerId,
         redoStack: prev.redoStack.slice(0, -1),
-        undoStack: [...prev.undoStack, prev.shapes],
+        undoStack: [...prev.undoStack, { shapes: prev.shapes, layers: prev.layers, currentLayerId: prev.currentLayerId }],
         shouldSave: false,
         lastRemoved: []
       };
@@ -192,6 +219,12 @@ function App() {
     }
   }, [state.shouldSave]);
 
+  const handleToggleLayerVisibility = useCallback((layerId) => {
+    const layer = state.layers.find(l => l.id === layerId);
+    if (!layer) return;
+    runCommand({ action: 'toggleLayerVisibility', visible: !layer.visible, layerId });
+  }, [state.layers, runCommand]);
+
   const lastCommand = state.history.length > 0 ? state.history[state.history.length - 1] : null;
 
   return (
@@ -265,8 +298,15 @@ function App() {
         </aside>
 
         <section className="canvas-area">
-          <CanvasBoard ref={canvasRef} shapes={state.shapes} background={state.background} grid={state.grid} />
+          <CanvasBoard ref={canvasRef} shapes={state.shapes} background={state.background} grid={state.grid} layers={state.layers} />
         </section>
+
+        <LayerPanel
+          layers={state.layers}
+          currentLayerId={state.currentLayerId}
+          onSelectLayer={(id) => runCommand({ action: 'switchLayer', target: id })}
+          onToggleVisibility={handleToggleLayerVisibility}
+        />
 
         <CommandPanel
           statusMessage={statusMessage}
@@ -274,6 +314,8 @@ function App() {
           lastRemoved={state.lastRemoved}
           background={state.background}
           grid={state.grid}
+          layers={state.layers}
+          currentLayerId={state.currentLayerId}
           onUndo={undo}
           onRedo={redo}
           canUndo={state.undoStack.length > 0}

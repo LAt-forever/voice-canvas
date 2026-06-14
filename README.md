@@ -69,6 +69,12 @@ npm run test
 - "换成棋盘格"
 - "换成星空背景"
 - "恢复默认背景"
+- "新建图层"
+- "切换到图层 2"
+- "重命名当前图层为背景"
+- "隐藏当前图层"
+- "显示当前图层"
+- "删除当前图层"
 - "First draw a red circle, then draw a blue square next to it" (requires LLM API key)
 
 ## LLM Configuration
