@@ -108,12 +108,12 @@ function App() {
     }
     pendingPlanRef.current = null;
     setPendingPlan(null);
-    setStatusMessage('已取消');
+    setStatusMessage('Cancelled');
   }, []);
 
   const executePendingPlan = useCallback(() => {
     const plan = pendingPlanRef.current;
-    if (!plan) return;
+    if (!plan?.commands?.length) return;
     if (confirmationTimerRef.current) {
       clearTimeout(confirmationTimerRef.current);
       confirmationTimerRef.current = null;
@@ -204,9 +204,8 @@ function App() {
               setPendingPlan(plan);
               setStatusMessage('请说“确认”执行，或“取消”放弃');
               confirmationTimerRef.current = setTimeout(() => {
-                pendingPlanRef.current = null;
-                setPendingPlan(null);
-                setStatusMessage('计划已超时取消');
+                clearPendingPlanRef.current();
+                setStatusMessage('Plan cancelled (timeout)');
               }, 5000);
             } catch (err) {
               setStatusMessage(`解析失败：${err.message}`);
