@@ -1,5 +1,5 @@
-const CONFIRM_KEYWORDS = Object.freeze(['确认', '执行', '开始', '好']);
-const CANCEL_KEYWORDS = Object.freeze(['取消', '放弃', '不', '算了']);
+const CONFIRM_KEYWORDS = Object.freeze(['确认', '执行', '开始', '好的', '好呀']);
+const CANCEL_KEYWORDS = Object.freeze(['取消', '放弃', '不要', '算了']);
 
 export function isConfirm(text) {
   if (typeof text !== 'string') return false;

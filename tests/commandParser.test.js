@@ -43,6 +43,21 @@ describe('parseCommand', () => {
   it('returns null for unparseable input', () => {
     expect(parseCommand('随便说点什么')).toBeNull();
   });
+
+  it('handles common ASR homophones and English colors', () => {
+    expect(parseCommand('画一个园')).toEqual([{
+      action: 'draw', shape: 'circle', color: null, position: 'center', size: 'medium'
+    }]);
+    expect(parseCommand('画一个红色举行')).toEqual([{
+      action: 'draw', shape: 'rect', color: '#ef4444', position: 'center', size: 'medium'
+    }]);
+    expect(parseCommand('Draw a red rectangle')).toEqual([{
+      action: 'draw', shape: 'rect', color: '#ef4444', position: 'center', size: 'medium'
+    }]);
+    expect(parseCommand('Draw a big blue circle in the top-left')).toEqual([{
+      action: 'draw', shape: 'circle', color: '#3b82f6', position: 'top-left', size: 'large'
+    }]);
+  });
 });
 
 describe('needsLLM', () => {
