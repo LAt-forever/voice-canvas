@@ -88,6 +88,29 @@ VITE_LLM_API_ENDPOINT=https://api.deepseek.com/v1/chat/completions
 
 You can use DeepSeek, OpenAI, or any OpenAI-compatible API.
 
+### 高级指令解析
+
+当一句话包含多步操作时，VoiceCanvas 会调用 LLM 解析为执行计划，并在面板上展示每一步，等待你确认。
+
+示例：
+
+```text
+“画一个红色的圆，再在旁边画一个蓝色的方块，然后把背景改成绿色”
+```
+
+面板会列出步骤：
+
+1. 在中心画一个红色的中号圆形
+2. 在右边画一个蓝色的中号矩形
+3. 将背景设置为绿色纯色
+
+确认词：
+
+- `确认` / `执行` / `开始` / `好`：执行计划
+- `取消` / `放弃` / `不` / `算了`：放弃计划
+
+5 秒内未确认会自动取消。
+
 ## Browser Support
 
 - Chrome / Edge: full support
