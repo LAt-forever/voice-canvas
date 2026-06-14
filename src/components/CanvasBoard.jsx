@@ -3,6 +3,7 @@ import { drawRect } from '../shapes/drawRect';
 import { drawCircle } from '../shapes/drawCircle';
 import { drawLine } from '../shapes/drawLine';
 import { drawTriangle } from '../shapes/drawTriangle';
+import { renderBackground } from '../utils/backgroundRenderer';
 
 const DRAWERS = {
   rect: drawRect,
@@ -28,7 +29,8 @@ function drawGrid(ctx, width, height, spacing) {
   ctx.restore();
 }
 
-const CanvasBoard = forwardRef(function CanvasBoard({ shapes, grid }, ref) {
+const CanvasBoard = forwardRef(function CanvasBoard({ shapes, background, grid }, ref) {
+  const bgCanvasRef = useRef(null);
   const gridCanvasRef = useRef(null);
   const shapeCanvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -36,31 +38,45 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes, grid }, ref) {
   useEffect(() => {
     function resize() {
       const container = containerRef.current;
+      const bgCanvas = bgCanvasRef.current;
       const gridCanvas = gridCanvasRef.current;
       const shapeCanvas = shapeCanvasRef.current;
-      if (!container || !gridCanvas || !shapeCanvas) return;
+      if (!container || !bgCanvas || !gridCanvas || !shapeCanvas) return;
 
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
 
-      [gridCanvas, shapeCanvas].forEach((canvas) => {
+      [bgCanvas, gridCanvas, shapeCanvas].forEach((canvas) => {
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         canvas.style.width = `${rect.width}px`;
         canvas.style.height = `${rect.height}px`;
       });
 
-      const shapeCtx = shapeCanvas.getContext('2d');
-      shapeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const gridCtx = gridCanvas.getContext('2d');
-      gridCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      [bgCanvas, gridCanvas, shapeCanvas].forEach((canvas) => {
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      });
     }
 
     resize();
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
   }, []);
+
+  useEffect(() => {
+    const canvas = bgCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.width / dpr;
+    const cssHeight = canvas.height / dpr;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+    renderBackground(ctx, cssWidth, cssHeight, background);
+  }, [background]);
 
   useEffect(() => {
     const gridCanvas = gridCanvasRef.current;
@@ -97,13 +113,23 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes, grid }, ref) {
 
   useImperativeHandle(ref, () => ({
     exportImage() {
-      const canvas = shapeCanvasRef.current;
-      return canvas ? canvas.toDataURL('image/png') : null;
+      const bgCanvas = bgCanvasRef.current;
+      const shapeCanvas = shapeCanvasRef.current;
+      if (!bgCanvas || !shapeCanvas) return null;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = bgCanvas.width;
+      canvas.height = bgCanvas.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bgCanvas, 0, 0);
+      ctx.drawImage(shapeCanvas, 0, 0);
+      return canvas.toDataURL('image/png');
     }
   }));
 
   return (
     <div ref={containerRef} className="canvas-board">
+      <canvas ref={bgCanvasRef} className="canvas-background" />
       <canvas ref={gridCanvasRef} className="canvas-grid" />
       <canvas ref={shapeCanvasRef} className="canvas-shapes" />
     </div>

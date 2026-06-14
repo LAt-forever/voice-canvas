@@ -13,6 +13,10 @@ function getCommandFeedback(command, result) {
     if (count === 0) return 'No matching shape found';
     return `Deleted ${count} shape${count > 1 ? 's' : ''}`;
   }
+  if (command.action === 'setBackground') {
+    const type = command.background?.type || 'solid';
+    return `Background set to ${type}`;
+  }
   return null;
 }
 
@@ -111,7 +115,7 @@ function App() {
           if (command) {
             command.forEach(runCommand);
             const lastCmd = command[command.length - 1];
-            const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize'];
+            const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground'];
             if (!feedbackActions.includes(lastCmd?.action)) {
               setStatusMessage(`Executed: ${text}`);
             }
@@ -122,7 +126,7 @@ function App() {
               const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT);
               commands.forEach(runCommand);
               const lastCmd = commands[commands.length - 1];
-              const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize'];
+              const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground'];
               if (!feedbackActions.includes(lastCmd?.action)) {
                 setStatusMessage(`Executed: ${text}`);
               }
@@ -260,13 +264,14 @@ function App() {
         </aside>
 
         <section className="canvas-area">
-          <CanvasBoard ref={canvasRef} shapes={state.shapes} grid={state.grid} />
+          <CanvasBoard ref={canvasRef} shapes={state.shapes} background={state.background} grid={state.grid} />
         </section>
 
         <CommandPanel
           statusMessage={statusMessage}
           currentCommand={lastCommand}
           lastRemoved={state.lastRemoved}
+          background={state.background}
           grid={state.grid}
           onUndo={undo}
           onRedo={redo}

@@ -183,6 +183,7 @@ body {
   overflow: hidden;
 }
 
+.canvas-background,
 .canvas-grid,
 .canvas-shapes {
   position: absolute;
@@ -192,13 +193,17 @@ body {
   height: 100%;
 }
 
-.canvas-grid {
+.canvas-background {
   z-index: 0;
+}
+
+.canvas-grid {
+  z-index: 1;
   pointer-events: none;
 }
 
 .canvas-shapes {
-  z-index: 1;
+  z-index: 2;
 }
 
 /* Right Sidebar */

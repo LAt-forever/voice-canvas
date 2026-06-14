@@ -14,7 +14,7 @@ export const GRID_SIZE_PRESETS = {
 };
 
 export function executeCommand(command, state, canvasSize) {
-  const { shapes, currentColor, grid = { visible: true, snap: true, spacing: 40 } } = state;
+  const { shapes, currentColor, grid = { visible: true, snap: true, spacing: 40 }, background } = state;
 
   switch (command.action) {
     case 'draw': {
@@ -32,28 +32,30 @@ export function executeCommand(command, state, canvasSize) {
         height: size.height,
         color: resolveColor(command.color || currentColor)
       };
-      return { shapes: [...shapes, newShape], currentColor: newShape.color, grid };
+      return { shapes: [...shapes, newShape], currentColor: newShape.color, grid, background };
     }
     case 'delete': {
       const targets = findMatchingShapes(shapes, command.filters, canvasSize);
       if (targets.length === 0) {
-        return { shapes, currentColor, removed: [] };
+        return { shapes, currentColor, removed: [], grid, background };
       }
       const targetIds = new Set(targets.map(t => t.id));
       return {
         shapes: shapes.filter(s => !targetIds.has(s.id)),
         currentColor,
-        removed: targets
+        removed: targets,
+        grid,
+        background
       };
     }
     case 'setColor': {
-      return { shapes, currentColor: resolveColor(command.color), grid };
+      return { shapes, currentColor: resolveColor(command.color), grid, background };
     }
     case 'clear': {
-      return { shapes: [], currentColor, grid };
+      return { shapes: [], currentColor, grid, background };
     }
     case 'save': {
-      return { shapes, currentColor, grid, shouldSave: true };
+      return { shapes, currentColor, grid, background, shouldSave: true };
     }
     case 'setGrid': {
       return { ...state, grid: { ...grid, visible: command.visible } };
@@ -65,8 +67,11 @@ export function executeCommand(command, state, canvasSize) {
       const spacing = GRID_SIZE_PRESETS[command.size] || grid.spacing;
       return { ...state, grid: { ...grid, spacing } };
     }
+    case 'setBackground': {
+      return { ...state, background: command.background };
+    }
     default:
-      return { shapes, currentColor, grid };
+      return { shapes, currentColor, grid, background };
   }
 }
 
@@ -78,6 +83,7 @@ export function createInitialState() {
     redoStack: [],
     history: [],
     shouldSave: false,
-    grid: { visible: true, snap: true, spacing: 40 }
+    grid: { visible: true, snap: true, spacing: 40 },
+    background: { type: 'solid', color: '#ffffff' }
   };
 }
