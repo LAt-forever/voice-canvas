@@ -23,31 +23,35 @@ export function executeCommand(command, state, canvasSize) {
         height: size.height,
         color: resolveColor(command.color || currentColor)
       };
-      return { shapes: [...shapes, newShape], currentColor: newShape.color };
+      return { shapes: [...shapes, newShape], currentColor: newShape.color, background: state.background };
     }
     case 'delete': {
       const targets = findMatchingShapes(shapes, command.filters, canvasSize);
       if (targets.length === 0) {
-        return { shapes, currentColor, removed: [] };
+        return { shapes, currentColor, removed: [], background: state.background };
       }
       const targetIds = new Set(targets.map(t => t.id));
       return {
         shapes: shapes.filter(s => !targetIds.has(s.id)),
         currentColor,
-        removed: targets
+        removed: targets,
+        background: state.background
       };
     }
     case 'setColor': {
-      return { shapes, currentColor: resolveColor(command.color) };
+      return { shapes, currentColor: resolveColor(command.color), background: state.background };
     }
     case 'clear': {
-      return { shapes: [], currentColor };
+      return { shapes: [], currentColor, background: state.background };
     }
     case 'save': {
-      return { shapes, currentColor, shouldSave: true };
+      return { shapes, currentColor, shouldSave: true, background: state.background };
+    }
+    case 'setBackground': {
+      return { ...state, background: command.background };
     }
     default:
-      return { shapes, currentColor };
+      return { shapes, currentColor, background: state.background };
   }
 }
 
@@ -58,6 +62,7 @@ export function createInitialState() {
     undoStack: [],
     redoStack: [],
     history: [],
-    shouldSave: false
+    shouldSave: false,
+    background: { type: 'solid', color: '#ffffff' }
   };
 }
