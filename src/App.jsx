@@ -208,7 +208,7 @@ function App() {
                 setStatusMessage('Plan cancelled (timeout)');
               }, 5000);
             } catch (err) {
-              setStatusMessage(`解析失败：${err.message}`);
+              setStatusMessage(`Parsing failed: ${err.message}`);
             } finally {
               setIsProcessing(false);
             }
