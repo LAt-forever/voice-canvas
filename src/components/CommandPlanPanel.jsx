@@ -1,21 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function CommandPlanPanel({ descriptions, timeoutMs = 5000, onConfirm, onCancel }) {
   const [remaining, setRemaining] = useState(timeoutMs);
+  const calledRef = useRef(false);
 
   useEffect(() => {
+    calledRef.current = false;
     setRemaining(timeoutMs);
     const interval = setInterval(() => {
-      setRemaining(prev => Math.max(0, prev - 100));
+      setRemaining(prev => {
+        const next = Math.max(0, prev - 100);
+        if (next <= 0 && !calledRef.current) {
+          calledRef.current = true;
+          onCancel();
+        }
+        return next;
+      });
     }, 100);
     return () => clearInterval(interval);
-  }, [timeoutMs]);
-
-  useEffect(() => {
-    if (remaining <= 0) {
-      onCancel();
-    }
-  }, [remaining, onCancel]);
+  }, [timeoutMs, onCancel]);
 
   const progress = timeoutMs > 0 ? (remaining / timeoutMs) * 100 : 0;
 
@@ -31,7 +34,13 @@ export default function CommandPlanPanel({ descriptions, timeoutMs = 5000, onCon
         ))}
       </ol>
       <div className="command-plan-timeout">
-        <div className="timeout-bar" style={{ width: `${progress}%` }} />
+        <div
+          className="timeout-bar"
+          role="timer"
+          aria-live="polite"
+          aria-label={`剩余 ${remaining} 毫秒`}
+          style={{ width: `${progress}%` }}
+        />
       </div>
       <div className="command-plan-actions">
         <button type="button" className="btn-confirm" onClick={onConfirm}>确认执行</button>

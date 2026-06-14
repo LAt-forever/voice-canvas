@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CommandPlanPanel from '../src/components/CommandPlanPanel';
 
@@ -40,5 +40,49 @@ describe('CommandPlanPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /取消/i }));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('auto-cancels when timeout expires', () => {
+    vi.useFakeTimers();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <CommandPlanPanel
+        descriptions={['步骤一']}
+        timeoutMs={5000}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('clears interval on unmount', () => {
+    vi.useFakeTimers();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const { unmount } = render(
+      <CommandPlanPanel
+        descriptions={['步骤一']}
+        timeoutMs={5000}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    );
+
+    unmount();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(onCancel).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });
