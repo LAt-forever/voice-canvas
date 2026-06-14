@@ -74,7 +74,6 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(null);
   const pendingPlanRef = useRef(null);
-  const confirmationTimerRef = useRef(null);
   const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || '';
   const LLM_API_ENDPOINT = import.meta.env.VITE_LLM_API_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions';
   const LLM_MODEL = import.meta.env.VITE_LLM_MODEL || 'deepseek-chat';
@@ -102,10 +101,6 @@ function App() {
   }, [canvasSize]);
 
   const clearPendingPlan = useCallback(() => {
-    if (confirmationTimerRef.current) {
-      clearTimeout(confirmationTimerRef.current);
-      confirmationTimerRef.current = null;
-    }
     pendingPlanRef.current = null;
     setPendingPlan(null);
     setStatusMessage('Cancelled');
@@ -114,10 +109,6 @@ function App() {
   const executePendingPlan = useCallback(() => {
     const plan = pendingPlanRef.current;
     if (!plan?.commands?.length) return;
-    if (confirmationTimerRef.current) {
-      clearTimeout(confirmationTimerRef.current);
-      confirmationTimerRef.current = null;
-    }
     plan.commands.forEach(runCommand);
     pendingPlanRef.current = null;
     setPendingPlan(null);
@@ -203,10 +194,6 @@ function App() {
               pendingPlanRef.current = plan;
               setPendingPlan(plan);
               setStatusMessage('Say "confirm" to execute or "cancel" to abort');
-              confirmationTimerRef.current = setTimeout(() => {
-                clearPendingPlanRef.current();
-                setStatusMessage('Plan cancelled (timeout)');
-              }, 5000);
             } catch (err) {
               setStatusMessage(`Parsing failed: ${err.message}`);
             } finally {
