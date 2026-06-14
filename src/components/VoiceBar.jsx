@@ -1,4 +1,4 @@
-function VoiceBar({ isListening, transcript, onToggle, onClose }) {
+function VoiceBar({ isListening, transcript, prompt, onToggle, onClose }) {
   return (
     <div className={`voice-bar ${isListening ? 'listening' : ''}`}>
       <button type="button" className={`mic-btn ${isListening ? 'active' : ''}`} aria-label="Toggle voice" onClick={onToggle}>
@@ -11,7 +11,7 @@ function VoiceBar({ isListening, transcript, onToggle, onClose }) {
       </button>
       <div className="voice-info">
         <span className="voice-label">{isListening ? 'LISTENING...' : 'VOICE ACTIVE'}</span>
-        <span className="voice-transcript">{transcript || 'Say something to start drawing'}</span>
+        <span className="voice-transcript">{transcript || prompt || 'Say something to start drawing'}</span>
       </div>
       <div className="voice-waveform">
         {[1, 2, 3, 4, 5].map((i) => (
