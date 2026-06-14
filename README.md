@@ -53,9 +53,6 @@ npm run test
 - "删除最后一个图形"
 - "删掉左上角的红方块"
 - "删除所有红色的图形"
-- "删除最后一个图形"
-- "删掉左上角的红方块"
-- "删除所有红色的图形"
 - "显示网格"
 - "隐藏网格"
 - "打开吸附"
@@ -88,9 +85,9 @@ VITE_LLM_API_ENDPOINT=https://api.deepseek.com/v1/chat/completions
 
 You can use DeepSeek, OpenAI, or any OpenAI-compatible API.
 
-### 高级指令解析
+### Advanced Command Parsing
 
-当一句话包含多步操作时，VoiceCanvas 会调用 LLM 解析为执行计划，并在面板上展示每一步，等待你确认。
+当一句话包含多步操作时，VoiceCanvas 会调用 LLM 解析为执行计划，并在面板上展示每一步，等待你确认。（需要配置 LLM API key）
 
 示例：
 
