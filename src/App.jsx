@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import CanvasBoard from './components/CanvasBoard';
 import CommandPanel from './components/CommandPanel';
 import VoiceBar from './components/VoiceBar';
-import { executeCommand, createInitialState } from './services/executor';
+import { executeCommand, createInitialState, GRID_SIZE_PRESETS } from './services/executor';
 import { createSpeechRecognizer, isSpeechSupported } from './services/speechService';
 import { parseCommand, needsLLM } from './services/commandParser';
 import { parseWithLLM } from './services/llmParser';
@@ -18,6 +18,19 @@ function getCommandFeedback(command, result) {
     return `Background set to ${type}`;
   }
   return null;
+}
+
+function getGridFeedback(command) {
+  switch (command.action) {
+    case 'setGrid':
+      return command.visible ? 'Grid shown' : 'Grid hidden';
+    case 'setSnap':
+      return command.snap ? 'Snap enabled' : 'Snap disabled';
+    case 'setGridSize':
+      return `Grid spacing set to ${GRID_SIZE_PRESETS[command.size] || GRID_SIZE_PRESETS.medium}px`;
+    default:
+      return null;
+  }
 }
 
 function App() {
@@ -42,7 +55,7 @@ function App() {
   const runCommand = useCallback((command) => {
     setState(prev => {
       const { removed, ...next } = executeCommand(command, prev, canvasSize);
-      feedbackRef.current = getCommandFeedback(command, { ...next, removed });
+      feedbackRef.current = getCommandFeedback(command, { ...next, removed }) || getGridFeedback(command);
       return {
         ...next,
         lastRemoved: removed || [],
@@ -102,7 +115,7 @@ function App() {
           if (command) {
             command.forEach(runCommand);
             const lastCmd = command[command.length - 1];
-            const feedbackActions = ['delete', 'setBackground'];
+            const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground'];
             if (!feedbackActions.includes(lastCmd?.action)) {
               setStatusMessage(`Executed: ${text}`);
             }
@@ -113,7 +126,7 @@ function App() {
               const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT);
               commands.forEach(runCommand);
               const lastCmd = commands[commands.length - 1];
-              const feedbackActions = ['delete', 'setBackground'];
+              const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground'];
               if (!feedbackActions.includes(lastCmd?.action)) {
                 setStatusMessage(`Executed: ${text}`);
               }
@@ -251,7 +264,7 @@ function App() {
         </aside>
 
         <section className="canvas-area">
-          <CanvasBoard ref={canvasRef} shapes={state.shapes} background={state.background} />
+          <CanvasBoard ref={canvasRef} shapes={state.shapes} background={state.background} grid={state.grid} />
         </section>
 
         <CommandPanel
@@ -259,6 +272,7 @@ function App() {
           currentCommand={lastCommand}
           lastRemoved={state.lastRemoved}
           background={state.background}
+          grid={state.grid}
           onUndo={undo}
           onRedo={redo}
           canUndo={state.undoStack.length > 0}

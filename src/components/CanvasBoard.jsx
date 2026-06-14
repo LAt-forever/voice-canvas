@@ -12,7 +12,24 @@ const DRAWERS = {
   triangle: drawTriangle
 };
 
-const CanvasBoard = forwardRef(function CanvasBoard({ shapes, background }, ref) {
+function drawGrid(ctx, width, height, spacing) {
+  ctx.save();
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x <= width; x += spacing) {
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+  }
+  for (let y = 0; y <= height; y += spacing) {
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+const CanvasBoard = forwardRef(function CanvasBoard({ shapes, background, grid }, ref) {
   const bgCanvasRef = useRef(null);
   const gridCanvasRef = useRef(null);
   const shapeCanvasRef = useRef(null);
@@ -60,6 +77,22 @@ const CanvasBoard = forwardRef(function CanvasBoard({ shapes, background }, ref)
     ctx.clearRect(0, 0, cssWidth, cssHeight);
     renderBackground(ctx, cssWidth, cssHeight, background);
   }, [background]);
+
+  useEffect(() => {
+    const gridCanvas = gridCanvasRef.current;
+    if (!gridCanvas) return;
+
+    const ctx = gridCanvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = gridCanvas.width / dpr;
+    const cssHeight = gridCanvas.height / dpr;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+    if (grid?.visible) {
+      drawGrid(ctx, cssWidth, cssHeight, grid.spacing);
+    }
+  }, [grid]);
 
   useEffect(() => {
     const canvas = shapeCanvasRef.current;

@@ -198,6 +198,38 @@ function parseDeleteCommand(text) {
   return { action: 'delete', filters };
 }
 
+function isGridCommand(text) {
+  return text.includes('网格') || text.includes('吸附') || text.includes('grid') || text.includes('snap');
+}
+
+function parseGridCommand(text) {
+  if (text.includes('网格')) {
+    if (text.includes('显示') || text.includes('打开') || text.includes('show')) {
+      return { action: 'setGrid', visible: true };
+    }
+    if (text.includes('隐藏') || text.includes('关闭') || text.includes('hide')) {
+      return { action: 'setGrid', visible: false };
+    }
+    if (text.includes('调大') || text.includes('大一点') || text.includes('bigger')) {
+      return { action: 'setGridSize', size: 'large' };
+    }
+    if (text.includes('调小') || text.includes('小一点') || text.includes('smaller')) {
+      return { action: 'setGridSize', size: 'small' };
+    }
+  }
+
+  if (text.includes('吸附') || text.includes('snap')) {
+    if (text.includes('打开') || text.includes('开启') || text.includes('enable')) {
+      return { action: 'setSnap', snap: true };
+    }
+    if (text.includes('关闭') || text.includes('disable')) {
+      return { action: 'setSnap', snap: false };
+    }
+  }
+
+  return null;
+}
+
 export function parseCommand(text) {
   const normalized = text.toLowerCase().trim();
 
@@ -207,6 +239,11 @@ export function parseCommand(text) {
 
   if (isDeleteCommand(normalized)) {
     return [parseDeleteCommand(normalized)];
+  }
+
+  if (isGridCommand(normalized)) {
+    const gridCmd = parseGridCommand(normalized);
+    if (gridCmd) return [gridCmd];
   }
 
   if (normalized.includes('撤销')) {
