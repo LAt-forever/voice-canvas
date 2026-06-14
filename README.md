@@ -53,6 +53,13 @@ npm run test
 - "删除最后一个图形"
 - "删掉左上角的红方块"
 - "删除所有红色的图形"
+- "把背景改成蓝色"
+- "换成从左到右的红蓝渐变"
+- "换成中心扩散的蓝色渐变"
+- "换成黑白条纹"
+- "换成棋盘格"
+- "换成星空背景"
+- "恢复默认背景"
 - "First draw a red circle, then draw a blue square next to it" (requires LLM API key)
 
 ## LLM Configuration
