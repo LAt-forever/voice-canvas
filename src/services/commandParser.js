@@ -292,8 +292,68 @@ function parseGridCommand(text) {
   return null;
 }
 
+const CORE_PORTRAIT_MARKERS = ['肖像', '头像', '人像', '人物'];
+const PORTRAIT_MARKERS = [...CORE_PORTRAIT_MARKERS, '女孩', '男孩', '女生', '男生', '女人', '男人'];
+
+function isPortraitCommand(text) {
+  const normalized = text.toLowerCase();
+  return PORTRAIT_MARKERS.some(marker => normalized.includes(marker));
+}
+
+function extractPortraitDescription(text) {
+  const match = text.match(/画(?:一个|个|一)?(.+)/);
+  if (!match) return 'portrait';
+
+  let description = match[1].trim();
+  for (const marker of CORE_PORTRAIT_MARKERS) {
+    description = description.replace(new RegExp(marker, 'g'), '').trim();
+  }
+  description = description.replace(/的$/, '').trim();
+  return description || 'portrait';
+}
+
+const POSITION_NORMALIZE = {
+  '左上角': 'top-left',
+  '右上角': 'top-right',
+  '左下角': 'bottom-left',
+  '右下角': 'bottom-right',
+  '左上': 'top-left',
+  '右上': 'top-right',
+  '左下': 'bottom-left',
+  '右下': 'bottom-right',
+  '上方': 'top',
+  '下方': 'bottom',
+  '左边': 'left',
+  '右边': 'right',
+  '上': 'top',
+  '下': 'bottom',
+  '左': 'left',
+  '右': 'right',
+  '中间': 'center',
+  '中央': 'center',
+  '中心': 'center'
+};
+
+function normalizePosition(pos) {
+  return POSITION_NORMALIZE[pos] || pos;
+}
+
+function parsePortraitCommand(text) {
+  return {
+    action: 'drawPortrait',
+    description: extractPortraitDescription(text),
+    position: normalizePosition(detectPosition(text)),
+    size: detectSize(text),
+    color: detectColor(text) || '#333333'
+  };
+}
+
 export function parseCommand(text) {
   const normalized = text.toLowerCase().trim();
+
+  if (isPortraitCommand(normalized)) {
+    return [parsePortraitCommand(normalized)];
+  }
 
   if (isLayerCommand(normalized)) {
     const layerCmd = parseLayerCommand(normalized);
