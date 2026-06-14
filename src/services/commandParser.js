@@ -164,6 +164,44 @@ function parseBackgroundCommand(text) {
   return { action: 'setBackground', background };
 }
 
+function isLayerCommand(text) {
+  return text.includes('图层') || text.includes('layer');
+}
+
+function parseLayerCommand(text) {
+  if (text.includes('新建') || text.includes('创建') || text.includes('new')) {
+    return { action: 'createLayer' };
+  }
+
+  if (text.includes('切换') || text.includes('切到') || text.includes('switch')) {
+    const match = text.match(/图层\s*(\d+)/);
+    if (match) {
+      return { action: 'switchLayer', target: match[1] };
+    }
+  }
+
+  if (text.includes('重命名') || text.includes('rename')) {
+    const nameMatch = text.match(/(?:为|成|叫|至)\s*([^\s]+)$/);
+    if (nameMatch) {
+      return { action: 'renameLayer', name: nameMatch[1] };
+    }
+  }
+
+  if (text.includes('隐藏') || text.includes('hide')) {
+    return { action: 'toggleLayerVisibility', visible: false };
+  }
+
+  if (text.includes('显示') || text.includes('show')) {
+    return { action: 'toggleLayerVisibility', visible: true };
+  }
+
+  if (text.includes('删除') || text.includes('delete') || text.includes('remove')) {
+    return { action: 'deleteLayer' };
+  }
+
+  return null;
+}
+
 function isDeleteCommand(text) {
   const keywords = ['删', 'remove', 'delete', 'erase'];
   return keywords.some(k => text.includes(k));
@@ -232,6 +270,11 @@ function parseGridCommand(text) {
 
 export function parseCommand(text) {
   const normalized = text.toLowerCase().trim();
+
+  if (isLayerCommand(normalized)) {
+    const layerCmd = parseLayerCommand(normalized);
+    if (layerCmd) return [layerCmd];
+  }
 
   if (isBackgroundCommand(normalized)) {
     return [parseBackgroundCommand(normalized)];
