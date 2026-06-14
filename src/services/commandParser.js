@@ -344,6 +344,23 @@ export function canParseLocally(text) {
   return parseCommand(text) !== null;
 }
 
+export function extractParameter(text, paramType) {
+  switch (paramType) {
+    case 'color':
+      return detectColor(text);
+    case 'size':
+      return extractSize(text);
+    case 'position':
+      return extractPosition(text);
+    case 'shape':
+      return detectShape(text);
+    default:
+      return null;
+  }
+}
+
+export { detectShape, detectColor, detectPosition, extractPosition, detectSize, extractSize };
+
 export function needsLLM(text) {
   const normalized = text.toLowerCase();
   const complexMarkers = ['先', '再', '然后', '接着', '第一步', '第二步', '和', '连'];

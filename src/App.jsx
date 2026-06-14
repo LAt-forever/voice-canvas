@@ -5,10 +5,9 @@ import CommandPanel from './components/CommandPanel';
 import VoiceBar from './components/VoiceBar';
 import { executeCommand, createInitialState, GRID_SIZE_PRESETS } from './services/executor';
 import { createSpeechRecognizer, isSpeechSupported } from './services/speechService';
-import { parseCommand, needsLLM } from './services/commandParser';
-import { parseWithLLM } from './services/llmParser';
-import { describeCommand } from './utils/describeCommand';
-import { isConfirm, isCancel } from './utils/confirmationMatcher';
+import { parseCommand, needsLLM, extractParameter } from './services/commandParser';
+import { parseWithClarification, createPlanDescription } from './services/llmParser';
+import { isConfirm, isCancel, isSkip } from './utils/confirmationMatcher';
 import CommandPlanPanel from './components/CommandPlanPanel';
 
 function getCommandFeedback(command, result) {
@@ -56,6 +55,21 @@ function getLayerFeedback(command, state) {
   }
 }
 
+function applyAnswerToCommand(command, param, value, currentColor) {
+  if (param === 'shape') return { ...command, shape: value };
+  if (param === 'color') return { ...command, color: value || currentColor };
+  if (param === 'position') return { ...command, position: value || 'center' };
+  if (param === 'size') return { ...command, size: value || 'medium' };
+  return command;
+}
+
+function getDefaultForParam(param, currentColor) {
+  if (param === 'color') return currentColor;
+  if (param === 'position') return 'center';
+  if (param === 'size') return 'medium';
+  return undefined;
+}
+
 function App() {
   const canvasRef = useRef(null);
   const [state, setState] = useState(() => ({
@@ -72,8 +86,8 @@ function App() {
   const feedbackRef = useRef(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pendingPlan, setPendingPlan] = useState(null);
-  const pendingPlanRef = useRef(null);
+  const [planState, setPlanState] = useState(null);
+  const planStateRef = useRef(null);
   const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || '';
   const LLM_API_ENDPOINT = import.meta.env.VITE_LLM_API_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions';
   const LLM_MODEL = import.meta.env.VITE_LLM_MODEL || 'deepseek-chat';
@@ -100,25 +114,119 @@ function App() {
     }
   }, [canvasSize]);
 
-  const clearPendingPlan = useCallback(() => {
-    pendingPlanRef.current = null;
-    setPendingPlan(null);
+  const clearPlanState = useCallback(() => {
+    planStateRef.current = null;
+    setPlanState(null);
     setStatusMessage('Cancelled');
   }, []);
 
-  const executePendingPlan = useCallback(() => {
-    const plan = pendingPlanRef.current;
+  const executePlanState = useCallback(() => {
+    const plan = planStateRef.current;
     if (!plan?.commands?.length) return;
-    plan.commands.forEach(runCommand);
-    pendingPlanRef.current = null;
-    setPendingPlan(null);
-    setStatusMessage(`Executed ${plan.commands.length} steps`);
-  }, [runCommand]);
 
-  const executePendingPlanRef = useRef(executePendingPlan);
-  const clearPendingPlanRef = useRef(clearPendingPlan);
-  executePendingPlanRef.current = executePendingPlan;
-  clearPendingPlanRef.current = clearPendingPlan;
+    const resolvedCommands = plan.commands.map((cmd, idx) => {
+      let updated = cmd;
+      for (const key of Object.keys(plan.answers || {})) {
+        const [cmdIdx, param] = key.split(':');
+        if (parseInt(cmdIdx, 10) === idx) {
+          updated = applyAnswerToCommand(updated, param, plan.answers[key], state.currentColor);
+        }
+      }
+      return updated;
+    });
+
+    resolvedCommands.forEach(runCommand);
+    planStateRef.current = null;
+    setPlanState(null);
+    setStatusMessage(`Executed ${resolvedCommands.length} steps`);
+  }, [runCommand, state.currentColor]);
+
+  const askNextQuestion = useCallback((nextPlan) => {
+    const question = nextPlan.missingParams[nextPlan.currentQuestionIndex];
+    if (question) {
+      planStateRef.current = nextPlan;
+      setPlanState(nextPlan);
+      setStatusMessage(question.question);
+    } else {
+      planStateRef.current = { ...nextPlan, mode: 'awaiting_confirmation' };
+      setPlanState(planStateRef.current);
+      setStatusMessage('Say "confirm" to execute or "cancel" to abort');
+    }
+  }, []);
+
+  const applyAnswer = useCallback((answerText, paramType) => {
+    const plan = planStateRef.current;
+    if (!plan || plan.mode !== 'awaiting_clarification') return;
+
+    const current = plan.missingParams[plan.currentQuestionIndex];
+    if (!current) return;
+
+    let value = null;
+    if (isSkip(answerText)) {
+      value = getDefaultForParam(current.param, state.currentColor);
+    } else {
+      value = extractParameter(answerText, current.param);
+    }
+
+    if (value == null) {
+      setStatusMessage(`没听清，请回答：${current.question}`);
+      return;
+    }
+
+    const answerKey = `${current.commandIndex}:${current.param}`;
+    const nextAnswers = { ...plan.answers, [answerKey]: value };
+    const nextIndex = plan.currentQuestionIndex + 1;
+
+    if (nextIndex >= plan.missingParams.length) {
+      const finalPlan = {
+        ...plan,
+        answers: nextAnswers,
+        mode: 'awaiting_confirmation'
+      };
+      planStateRef.current = finalPlan;
+      setPlanState(finalPlan);
+      executePlanState();
+    } else {
+      askNextQuestion({
+        ...plan,
+        answers: nextAnswers,
+        currentQuestionIndex: nextIndex
+      });
+    }
+  }, [askNextQuestion, executePlanState, state.currentColor]);
+
+  const buildPlanState = useCallback((result, originalText) => {
+    const base = {
+      commands: result.commands || [],
+      descriptions: createPlanDescription(result.commands || []),
+      answers: {},
+      originalText,
+      startedAt: Date.now()
+    };
+
+    if (result.status === 'needs_clarification' && result.clarifications?.length > 0) {
+      return {
+        ...base,
+        mode: 'awaiting_clarification',
+        missingParams: result.clarifications,
+        currentQuestionIndex: 0
+      };
+    }
+
+    return {
+      ...base,
+      mode: 'awaiting_confirmation',
+      missingParams: [],
+      currentQuestionIndex: 0
+    };
+  }, []);
+
+  const executePlanStateRef = useRef(executePlanState);
+  const clearPlanStateRef = useRef(clearPlanState);
+  const applyAnswerRef = useRef(applyAnswer);
+  executePlanStateRef.current = executePlanState;
+  clearPlanStateRef.current = clearPlanState;
+  applyAnswerRef.current = applyAnswer;
 
   const undo = useCallback(() => {
     setState(prev => {
@@ -163,48 +271,62 @@ function App() {
     recognizerRef.current = createSpeechRecognizer({
       onResult: async (text, isFinal) => {
         setTranscript(text);
-        if (isFinal) {
-          if (pendingPlanRef.current) {
+        if (!isFinal) return;
+
+        const plan = planStateRef.current;
+
+        if (plan) {
+          if (plan.mode === 'awaiting_confirmation') {
             if (isConfirm(text)) {
-              executePendingPlanRef.current();
-              return;
+              executePlanStateRef.current();
+            } else if (isCancel(text)) {
+              clearPlanStateRef.current();
+            } else {
+              clearPlanStateRef.current();
             }
-            if (isCancel(text)) {
-              clearPendingPlanRef.current();
-              return;
-            }
-            clearPendingPlanRef.current();
+            return;
           }
-          const command = parseCommand(text);
-          if (command) {
-            command.forEach(runCommand);
-            const lastCmd = command[command.length - 1];
-            const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground', 'createLayer', 'switchLayer', 'renameLayer', 'toggleLayerVisibility', 'deleteLayer'];
-            if (!feedbackActions.includes(lastCmd?.action)) {
-              setStatusMessage(`Executed: ${text}`);
+
+          if (plan.mode === 'awaiting_clarification') {
+            applyAnswerRef.current(text);
+            return;
+          }
+        }
+
+        const command = parseCommand(text);
+        if (command) {
+          command.forEach(runCommand);
+          const lastCmd = command[command.length - 1];
+          const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground', 'createLayer', 'switchLayer', 'renameLayer', 'toggleLayerVisibility', 'deleteLayer'];
+          if (!feedbackActions.includes(lastCmd?.action)) {
+            setStatusMessage(`Executed: ${text}`);
+          }
+        } else if (needsLLM(text) && LLM_API_KEY) {
+          setIsProcessing(true);
+          setStatusMessage('Thinking...');
+          try {
+            const result = await parseWithClarification(text, LLM_API_KEY, LLM_API_ENDPOINT, LLM_MODEL);
+            if (!result || !result.commands || result.commands.length === 0) {
+              setStatusMessage('No plan generated');
+              return;
             }
-          } else if (needsLLM(text) && LLM_API_KEY) {
-            setIsProcessing(true);
-            setStatusMessage('Thinking...');
-            try {
-              const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT, LLM_MODEL);
-              if (!commands || commands.length === 0) {
-                setStatusMessage('No plan generated');
-                return;
-              }
-              const descriptions = commands.map(describeCommand);
-              const plan = { commands, descriptions, startedAt: Date.now() };
-              pendingPlanRef.current = plan;
-              setPendingPlan(plan);
+            const nextPlan = buildPlanState(result, text);
+            planStateRef.current = nextPlan;
+            setPlanState(nextPlan);
+
+            if (nextPlan.mode === 'awaiting_clarification') {
+              const firstQuestion = nextPlan.missingParams[0];
+              setStatusMessage(firstQuestion?.question || '需要补充信息');
+            } else {
               setStatusMessage('Say "confirm" to execute or "cancel" to abort');
-            } catch (err) {
-              setStatusMessage(`Parsing failed: ${err.message}`);
-            } finally {
-              setIsProcessing(false);
             }
-          } else {
-            setStatusMessage(`Unrecognized: ${text}`);
+          } catch (err) {
+            setStatusMessage(`Parsing failed: ${err.message}`);
+          } finally {
+            setIsProcessing(false);
           }
+        } else {
+          setStatusMessage(`Unrecognized: ${text}`);
         }
       },
       onError: (error) => {
@@ -212,14 +334,22 @@ function App() {
         setIsListening(false);
       },
       onEnd: () => {
-        setIsListening(false);
+        if (planStateRef.current) {
+          try {
+            recognizerRef.current?.start();
+          } catch (err) {
+            setIsListening(false);
+          }
+        } else {
+          setIsListening(false);
+        }
       }
     });
 
     return () => {
       if (recognizerRef.current) recognizerRef.current.stop();
     };
-  }, [runCommand]);
+  }, [runCommand, buildPlanState, LLM_API_KEY, LLM_API_ENDPOINT, LLM_MODEL]);
 
   const toggleListening = useCallback(() => {
     if (isListening) {
@@ -266,6 +396,10 @@ function App() {
 
   const lastCommand = state.history.length > 0 ? state.history[state.history.length - 1] : null;
 
+  const voiceBarPrompt = planState?.mode === 'awaiting_clarification'
+    ? planState.missingParams[planState.currentQuestionIndex]?.question || '请回答'
+    : null;
+
   return (
     <div className="app">
       <header className="app-header">
@@ -291,7 +425,7 @@ function App() {
             <button type="button" className="icon-btn" aria-label="Settings">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06A1.65 1.65 0 0 0 4.17 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.17 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l-.06-.06A1.65 1.65 0 0 0 9 4.17a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06A1.65 1.65 0 0 0 4.17 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.17 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l-.06-.06A1.65 1.65 0 0 0 9 4.17a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
             <button type="button" className="icon-btn avatar-btn" aria-label="User">
@@ -340,12 +474,18 @@ function App() {
           <CanvasBoard ref={canvasRef} shapes={state.shapes} background={state.background} grid={state.grid} layers={state.layers} />
         </section>
 
-        {pendingPlan && (
+        {planState && (
           <CommandPlanPanel
-            descriptions={pendingPlan.descriptions}
+            mode={planState.mode}
+            descriptions={planState.descriptions}
+            interpretedCommand={planState.originalText}
+            missingParams={planState.missingParams}
+            currentQuestionIndex={planState.currentQuestionIndex}
+            answers={planState.answers}
             timeoutMs={5000}
-            onConfirm={executePendingPlan}
-            onCancel={clearPendingPlan}
+            onAnswer={applyAnswer}
+            onConfirm={executePlanState}
+            onCancel={clearPlanState}
           />
         )}
 
@@ -376,6 +516,7 @@ function App() {
       <VoiceBar
         isListening={isListening}
         transcript={transcript}
+        prompt={voiceBarPrompt}
         onToggle={toggleListening}
         onClose={closeVoiceBar}
       />
