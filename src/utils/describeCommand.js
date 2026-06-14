@@ -124,6 +124,12 @@ export function describeCommand(command) {
       return '保存图片';
     case 'delete':
       return '删除符合条件的图形';
+    case 'drawPortrait': {
+      const subject = command.description || '人物';
+      const size = SIZE_NAMES[command.size] || '中号';
+      const pos = POSITION_NAMES[command.position] || '中心';
+      return `在${pos}用铅笔绘制${size}“${subject}”肖像`;
+    }
     default:
       return `未知命令：${JSON.stringify(command)}`;
   }

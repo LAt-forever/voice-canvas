@@ -9,6 +9,9 @@ import { parseCommand, needsLLM, extractParameter } from './services/commandPars
 import { parseWithClarification, createPlanDescription } from './services/llmParser';
 import { isConfirm, isCancel, isSkip } from './utils/confirmationMatcher';
 import CommandPlanPanel from './components/CommandPlanPanel';
+import { portraitPipeline, terminateWorker } from './services/portraitPipeline';
+import * as portraitAnimatorModule from './services/portraitAnimator';
+import PencilCursor from './components/PencilCursor';
 
 function getCommandFeedback(command, result) {
   if (command.action === 'delete') {
@@ -92,7 +95,84 @@ function App() {
   const LLM_API_ENDPOINT = import.meta.env.VITE_LLM_API_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions';
   const LLM_MODEL = import.meta.env.VITE_LLM_MODEL || 'deepseek-chat';
 
+  const STABILITY_API_KEY = import.meta.env.VITE_STABILITY_API_KEY || '';
+  const STABILITY_API_ENDPOINT = import.meta.env.VITE_STABILITY_API_ENDPOINT || 'https://api.stability.ai/v2beta/stable-image/generate/sd3';
+  const PORTRAIT_MODEL = import.meta.env.VITE_PORTRAIT_MODEL || 'sd3-medium';
+
+  const [pencilTip, setPencilTip] = useState({ x: 0, y: 0, visible: false });
+  const [isPortraitProcessing, setIsPortraitProcessing] = useState(false);
+  const portraitAbortRef = useRef(false);
+
+  const startPortraitPipeline = useCallback(async (command) => {
+    if (!STABILITY_API_KEY) {
+      setStatusMessage('请配置 VITE_STABILITY_API_KEY');
+      return;
+    }
+
+    portraitAbortRef.current = false;
+    setIsPortraitProcessing(true);
+
+    try {
+      await portraitPipeline(command, {
+        VITE_STABILITY_API_KEY: STABILITY_API_KEY,
+        VITE_STABILITY_API_ENDPOINT: STABILITY_API_ENDPOINT,
+        VITE_PORTRAIT_MODEL: PORTRAIT_MODEL
+      }, {
+        onStatus: (msg) => {
+          if (!portraitAbortRef.current) setStatusMessage(msg);
+        },
+        onComplete: (completed) => {
+          if (portraitAbortRef.current) return;
+
+          setState(prev => {
+            const shapes = prev.shapes.slice();
+            const last = shapes[shapes.length - 1];
+            if (!last || last.type !== 'portrait') return prev;
+
+            const updated = {
+              ...last,
+              strokes: completed.strokes,
+              totalLength: completed.totalLength,
+              sourcePrompt: completed.prompt,
+              isAnimating: true,
+              animationProgress: 0
+            };
+            shapes[shapes.length - 1] = updated;
+            return { ...prev, shapes };
+          });
+
+          setPencilTip(prev => ({ ...prev, visible: true }));
+          setStatusMessage('Drawing portrait...');
+        },
+        onError: (err) => {
+          if (!portraitAbortRef.current) {
+            setStatusMessage(`Portrait failed: ${err.message}`);
+          }
+          setIsPortraitProcessing(false);
+        }
+      });
+    } catch (err) {
+      setStatusMessage(`Portrait failed: ${err.message}`);
+      setIsPortraitProcessing(false);
+    }
+  }, [STABILITY_API_KEY, STABILITY_API_ENDPOINT, PORTRAIT_MODEL]);
+
   const runCommand = useCallback((command) => {
+    if (command.action === 'drawPortrait') {
+      setState(prev => {
+        const { removed, ...next } = executeCommand(command, prev, canvasSize);
+        return {
+          ...next,
+          lastRemoved: removed || [],
+          undoStack: [...prev.undoStack, { shapes: prev.shapes, layers: prev.layers, currentLayerId: prev.currentLayerId }],
+          redoStack: [],
+          history: [...(prev.history || []), command]
+        };
+      });
+      startPortraitPipeline(command);
+      return;
+    }
+
     setState(prev => {
       const { removed, ...next } = executeCommand(command, prev, canvasSize);
       const feedback = getCommandFeedback(command, { ...next, removed })
@@ -112,11 +192,14 @@ function App() {
       setStatusMessage(feedbackRef.current);
       feedbackRef.current = null;
     }
-  }, [canvasSize]);
+  }, [canvasSize, startPortraitPipeline]);
 
   const clearPlanState = useCallback(() => {
     planStateRef.current = null;
     setPlanState(null);
+    portraitAbortRef.current = true;
+    terminateWorker();
+    setIsPortraitProcessing(false);
     setStatusMessage('Cancelled');
   }, []);
 
@@ -375,6 +458,73 @@ function App() {
     runCommand({ action: 'save' });
   }, [runCommand]);
 
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const portraitAnimRef = useRef(null);
+  const lastTimeRef = useRef(performance.now());
+
+  useEffect(() => {
+    const hasAnimatingPortrait = state.shapes.some(s => s.type === 'portrait' && s.isAnimating);
+    if (!hasAnimatingPortrait) {
+      setPencilTip(prev => ({ ...prev, visible: false }));
+      return;
+    }
+
+    let rafId;
+    lastTimeRef.current = performance.now();
+    const speed = 200; // pixels per second
+
+    function tick(now) {
+      const dt = now - lastTimeRef.current;
+      lastTimeRef.current = now;
+
+      const currentState = stateRef.current;
+      const portrait = currentState.shapes.find(s => s.type === 'portrait' && s.isAnimating);
+      if (!portrait) {
+        setPencilTip(t => ({ ...t, visible: false }));
+        return;
+      }
+
+      if (!portraitAnimRef.current || portraitAnimRef.current.shapeId !== portrait.id) {
+        const { createAnimator } = portraitAnimatorModule;
+        portraitAnimRef.current = {
+          shapeId: portrait.id,
+          animator: createAnimator(portrait.strokes, portrait, speed)
+        };
+      }
+
+      const { animator } = portraitAnimRef.current;
+      animator.advance(dt);
+      const nextProgress = animator.getProgress();
+      const { getTipPosition } = portraitAnimatorModule;
+      const tip = getTipPosition(animator);
+      if (tip) setPencilTip({ x: tip.x, y: tip.y, visible: true });
+
+      if (animator.isComplete()) {
+        setStatusMessage('Portrait drawn');
+        setIsPortraitProcessing(false);
+        portraitAnimRef.current = null;
+      }
+
+      setState(prev => ({
+        ...prev,
+        shapes: prev.shapes.map(s =>
+          s.id === portrait.id
+            ? { ...s, animationProgress: nextProgress, isAnimating: !animator.isComplete() }
+            : s
+        )
+      }));
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [state.shapes]);
+
   useEffect(() => {
     if (state.shouldSave && canvasRef.current) {
       const dataUrl = canvasRef.current.exportImage();
@@ -467,6 +617,13 @@ function App() {
             <button type="button" onClick={() => runCommand({ action: 'draw', shape: 'line', color: 'green', position: 'center', size: 'medium' })} className="btn-debug">
               Draw Green Line
             </button>
+            <button
+              type="button"
+              onClick={() => runCommand({ action: 'drawPortrait', description: '戴眼镜的女孩', size: 'small' })}
+              className="btn-debug"
+            >
+              Draw Portrait
+            </button>
           </div>
         </aside>
 
@@ -520,6 +677,7 @@ function App() {
         onToggle={toggleListening}
         onClose={closeVoiceBar}
       />
+      <PencilCursor x={pencilTip.x} y={pencilTip.y} visible={pencilTip.visible} />
     </div>
   );
 }

@@ -3,13 +3,15 @@ import { drawRect } from '../shapes/drawRect';
 import { drawCircle } from '../shapes/drawCircle';
 import { drawLine } from '../shapes/drawLine';
 import { drawTriangle } from '../shapes/drawTriangle';
+import { drawPortrait } from '../shapes/drawPortrait';
 import { renderBackground } from '../utils/backgroundRenderer';
 
 const DRAWERS = {
   rect: drawRect,
   circle: drawCircle,
   line: drawLine,
-  triangle: drawTriangle
+  triangle: drawTriangle,
+  portrait: drawPortrait
 };
 
 function drawGrid(ctx, width, height, spacing) {

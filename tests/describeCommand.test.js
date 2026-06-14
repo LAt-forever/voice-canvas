@@ -52,3 +52,16 @@ describe('describeCommand', () => {
     expect(describeCommand(cmd)).toContain('magic');
   });
 });
+
+describe('describeCommand portrait', () => {
+  it('describes a portrait command', () => {
+    const desc = describeCommand({
+      action: 'drawPortrait',
+      description: '戴眼镜的女孩',
+      position: 'center',
+      size: 'medium'
+    });
+    expect(desc).toContain('戴眼镜的女孩');
+    expect(desc).toContain('肖像');
+  });
+});

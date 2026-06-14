@@ -28,6 +28,19 @@ describe('CommandPlanPanel - confirmation mode', () => {
     expect(screen.getByRole('button', { name: /取消/i })).toBeInTheDocument();
   });
 
+  it('renders portrait command description', () => {
+    render(
+      <CommandPlanPanel
+        mode="awaiting_confirmation"
+        descriptions={['在中心用铅笔绘制中号“戴眼镜的女孩”肖像']}
+        interpretedCommand="画一个戴眼镜的女孩"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/在中心用铅笔绘制/)).toBeInTheDocument();
+  });
+
   it('calls onConfirm and onCancel', () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
