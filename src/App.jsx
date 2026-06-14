@@ -51,6 +51,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const LLM_API_KEY = import.meta.env.VITE_LLM_API_KEY || '';
   const LLM_API_ENDPOINT = import.meta.env.VITE_LLM_API_ENDPOINT || 'https://api.deepseek.com/v1/chat/completions';
+  const LLM_MODEL = import.meta.env.VITE_LLM_MODEL || 'deepseek-chat';
 
   const runCommand = useCallback((command) => {
     setState(prev => {
@@ -123,7 +124,7 @@ function App() {
             setIsProcessing(true);
             setStatusMessage('Thinking...');
             try {
-              const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT);
+              const commands = await parseWithLLM(text, LLM_API_KEY, LLM_API_ENDPOINT, LLM_MODEL);
               commands.forEach(runCommand);
               const lastCmd = commands[commands.length - 1];
               const feedbackActions = ['delete', 'setGrid', 'setSnap', 'setGridSize', 'setBackground'];
