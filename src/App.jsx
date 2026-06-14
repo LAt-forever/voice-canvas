@@ -463,6 +463,7 @@ function App() {
   }, [state]);
 
   const portraitAnimRef = useRef(null);
+  const lastTimeRef = useRef(performance.now());
 
   useEffect(() => {
     const hasAnimatingPortrait = state.shapes.some(s => s.type === 'portrait' && s.isAnimating);
@@ -472,12 +473,12 @@ function App() {
     }
 
     let rafId;
-    let lastTime = performance.now();
+    lastTimeRef.current = performance.now();
     const speed = 200; // pixels per second
 
     function tick(now) {
-      const dt = now - lastTime;
-      lastTime = now;
+      const dt = now - lastTimeRef.current;
+      lastTimeRef.current = now;
 
       const currentState = stateRef.current;
       const portrait = currentState.shapes.find(s => s.type === 'portrait' && s.isAnimating);

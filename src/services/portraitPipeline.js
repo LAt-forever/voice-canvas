@@ -36,7 +36,7 @@ export function processImageInWorker(imageBitmap, config = {}) {
 }
 
 export async function portraitPipeline(rawCommand, env, callbacks = {}) {
-  const { onStatus, onShapeUpdate, onComplete, onError } = callbacks;
+  const { onStatus, onComplete, onError } = callbacks;
   const command = buildPortraitCommand(rawCommand);
   const apiKey = env.VITE_STABILITY_API_KEY;
   const endpoint = env.VITE_STABILITY_API_ENDPOINT;
@@ -46,18 +46,23 @@ export async function portraitPipeline(rawCommand, env, callbacks = {}) {
     throw new Error('请配置 VITE_STABILITY_API_KEY');
   }
 
-  onStatus?.('Generating portrait...');
-  const imageBitmap = await generatePortraitImage(command.prompt, apiKey, endpoint, model);
+  try {
+    onStatus?.('Generating portrait...');
+    const imageBitmap = await generatePortraitImage(command.prompt, apiKey, endpoint, model);
 
-  onStatus?.('Processing sketch...');
-  const result = await processImageInWorker(imageBitmap, {
-    targetSize: 256,
-    edgeThreshold: { low: 20, high: 60 },
-    simplifyTolerance: 1.2,
-    hatchingDensity: 6,
-    maxStrokes: 2000
-  });
+    onStatus?.('Processing sketch...');
+    const result = await processImageInWorker(imageBitmap, {
+      targetSize: 256,
+      edgeThreshold: { low: 20, high: 60 },
+      simplifyTolerance: 1.2,
+      hatchingDensity: 6,
+      maxStrokes: 2000
+    });
 
-  onStatus?.('Drawing portrait...');
-  onComplete?.({ ...command, strokes: result.strokes, totalLength: result.totalLength });
+    onStatus?.('Drawing portrait...');
+    onComplete?.({ ...command, strokes: result.strokes, totalLength: result.totalLength });
+  } catch (err) {
+    onError?.(err);
+    throw err;
+  }
 }
